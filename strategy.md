@@ -1,15 +1,77 @@
-these strategy works based on 3 candles. we have three main ways to decide if we should open the trade. in all three strategies we form a box from the 3 candles.
-how we open the trade: if the next candle after the box passes the box from any direction(upside or downside) we open the trade. if it is from the top we open a buy position, if it is from the bottom we open a sell position. the closing of the trade is like the last strategies.
-also we need the length of the box: the distance from the highest price reached to the lowest price reached.
+# 3-Candle Box Breakout Strategy
 
-1- first model: bullish/bearish/bullish or bearish/bullish/bearish
-if we saw any three candles create these pattern we form a box from them that it's length is from the highest price of the three candles to the lowest price of the three candles. then we wait for the next candle to pass the box either from the top or from the bottom.
+## Overview
 
-2- second model: bullish/bullish/bearish or bearish/bearish/bullish or bearish/bullish/bullish or bullish/bearish/bearish
-there is a rule with these candles: the two candles that have the same direction(exp: bearish/bearish or bullish/bullish), the point that second candle closes shouldn't be higher/lower than the highest/lowest price that the first candle reached.
-if the situation meets the conditions look for the opportunity to open the trade like the first condition.
+The strategy is based on three consecutive candles that form a **box**. Depending on how the next candle behaves relative to that box, a trade is opened.
 
-3- third model: bullish/bullish/bullish or bearish/bearish/bearish
-rule: the second candle closing point shouldn't be higher/lower than the first candle highest/lowest reached price and the third candle close shouldn't be higher/lower than the second candle highest/lowest reached price. the third candle and the first candle has nothing to do with each other and there is no condition for them on this situation.
+---
 
-stoploss: when we open a buy position the stop loss would be the bottom of the box - 0.3 dollar. when we open a sell position the stop loss would be the top of the box + 0.3 dollar.
+## Box Formation
+
+A box is formed from three consecutive candles. Its boundaries are:
+
+- **Box top**: the highest price (wick) reached across all three candles
+- **Box bottom**: the lowest price (wick) reached across all three candles
+- **Box length (distance)**: `box_top − box_bottom`
+
+The three candles must match one of the three models below. A doji candle (`close == open`) in any position invalidates the pattern.
+
+---
+
+## Trade Entry
+
+After a valid box is formed, only the **immediately next candle** can trigger an entry. If it does not trigger, no trade is taken.
+
+| Direction | Trigger condition                              | Entry price        | Stop loss          |
+| --------- | ---------------------------------------------- | ------------------ | ------------------ |
+| **Buy**   | Next candle's price reaches `box_top + 0.3`    | `box_top + 0.3`    | `box_bottom − 0.3` |
+| **Sell**  | Next candle's price reaches `box_bottom − 0.3` | `box_bottom − 0.3` | `box_top + 0.3`    |
+
+The simulation scans 1-minute bars inside the breakout candle to find the exact bar that first reaches an entry level.
+
+**If a single 1-minute bar reaches both levels simultaneously, the signal is ambiguous and no trade is taken.**
+If both levels are reached on different bars, the one reached earlier wins.
+
+---
+
+## Models
+
+### Model 1 — Alternating
+
+**Patterns:** `bullish / bearish / bullish` or `bearish / bullish / bearish`
+
+No extra rule. Any alternating three-candle sequence forms a valid box.
+
+---
+
+### Model 2 — One Adjacent Same-Direction Pair
+
+**Patterns:** `bullish / bullish / bearish` · `bearish / bearish / bullish` · `bearish / bullish / bullish` · `bullish / bearish / bearish`
+
+**Rule:** For the two candles that share the same direction (the adjacent pair):
+
+- **Bullish pair**: the second candle's close must **not** be higher than the first candle's high (wick)
+- **Bearish pair**: the second candle's close must **not** be lower than the first candle's low (wick)
+
+If the rule is violated, the pattern is invalid and no box is formed.
+
+---
+
+### Model 3 — All Same Direction
+
+**Patterns:** `bullish / bullish / bullish` or `bearish / bearish / bearish`
+
+**Rule (applied to consecutive pairs — candle 1→2 and candle 2→3):**
+
+- **All bullish**: candle 2 close ≤ candle 1 high (wick) **and** candle 3 close ≤ candle 2 high (wick)
+- **All bearish**: candle 2 close ≥ candle 1 low (wick) **and** candle 3 close ≥ candle 2 low (wick)
+
+Note: candles 1 and 3 have no direct rule between them.
+
+If either condition is violated, the pattern is invalid.
+
+---
+
+## Trade Exit
+
+The exit logic is the same as previous strategies: the simulation scans forward on 1-minute bars from the entry bar and records the maximum favorable move before the stop loss is hit.
