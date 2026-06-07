@@ -1,8 +1,9 @@
 # step1_extract.py
 #
-# Reads 1-minute forex candle data, resamples to 15M candles, detects
-# 3-candle "box breakout" signals (see strategy.md / box_strategy.py),
-# simulates each triggered trade forward, and writes all results to trades.csv.
+# Reads 1-minute forex candle data, resamples to CANDLE_TIMEFRAME candles
+# (see config.py), detects 3-candle "box breakout" signals (see strategy.md /
+# box_strategy.py), simulates each triggered trade forward, and writes all
+# results to trades.csv.
 #
 # Output columns:
 #   date, time, day_of_week, type, entry, stop_loss,
@@ -19,6 +20,7 @@ from config import (
     RAW_DATA_FILE,
     RAW_TRADES_FILE,
     NUM_WORKERS,
+    CANDLE_TIMEFRAME,
 )
 from box_strategy import box_signal, find_breakout
 
@@ -52,17 +54,17 @@ def load_minute_data(filepath):
 
 
 # ---------------------------------------------------------------
-# 15M RESAMPLING
+# RESAMPLING
 # ---------------------------------------------------------------
 
-def resample_to_15m(minute_df):
+def resample_candles(minute_df):
     """
-    Resamples 1-minute data into 15-minute OHLCV candles.
-    Candle label is the START of the 15M period.
-    Candle close time = label + 15 minutes.
+    Resamples 1-minute data into CANDLE_TIMEFRAME OHLCV candles (see config.py).
+    Candle label is the START of the period.
+    Candle close time = label + CANDLE_TIMEFRAME.
     Drops incomplete candles (e.g. partial periods at start/end of data).
     """
-    ohlcv = minute_df.resample("15min", label="left", closed="left").agg(
+    ohlcv = minute_df.resample(CANDLE_TIMEFRAME, label="left", closed="left").agg(
         open=("open", "first"),
         high=("high", "max"),
         low=("low", "min"),
@@ -121,7 +123,7 @@ def simulate_trade(direction, entry, stop_loss, distance, minute_times, minute_h
 _minute_times = None
 _minute_high  = None
 _minute_low   = None
-# 15M candle arrays (needed to build the 3-candle box) + the candle timeframe.
+# Candle arrays (needed to build the 3-candle box) + the candle timeframe.
 _c_times = None
 _c_open  = None
 _c_high  = None
@@ -202,22 +204,22 @@ def run():
     print(f"  To       : {minute_df.index[-1]}")
 
     # -- Resample --
-    print("\nResampling to 15M candles...")
-    candles_15m = resample_to_15m(minute_df)
-    print(f"  15M candles : {len(candles_15m):,}")
+    print(f"\nResampling to {CANDLE_TIMEFRAME} candles...")
+    candles = resample_candles(minute_df)
+    print(f"  {CANDLE_TIMEFRAME} candles : {len(candles):,}")
 
     # -- Simulate (parallel) --
     # Box = candles (i-2, i-1, i); breakout candle = i+1. Iterate every
     # overlapping triple that has a following candle to break it.
     print(f"\nDetecting box breakouts across {NUM_WORKERS} workers...")
-    c_times = candles_15m.index.values
-    c_open  = candles_15m["open"].to_numpy()
-    c_high  = candles_15m["high"].to_numpy()
-    c_low   = candles_15m["low"].to_numpy()
-    c_close = candles_15m["close"].to_numpy()
-    tf = pd.Timedelta(minutes=15)
+    c_times = candles.index.values
+    c_open  = candles["open"].to_numpy()
+    c_high  = candles["high"].to_numpy()
+    c_low   = candles["low"].to_numpy()
+    c_close = candles["close"].to_numpy()
+    tf = pd.Timedelta(CANDLE_TIMEFRAME)
 
-    box_indices = list(range(2, len(candles_15m) - 1))
+    box_indices = list(range(2, len(candles) - 1))
     with Pool(
         processes=NUM_WORKERS,
         initializer=_init_worker,

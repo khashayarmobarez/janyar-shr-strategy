@@ -2,7 +2,7 @@
 
 ## Overview
 
-Gold (XAU) trading strategy backtesting system. Reads raw 1-minute OHLCV data, resamples to 15-minute candles, simulates one trade per candle close (Buy if candle closed up, Sell if it closed down), then scores and filters distance buckets by reward/risk ratio. Test bots run equity-curve backtests on the surviving filtered trades.
+Gold (XAU) trading strategy backtesting system. Reads raw 1-minute OHLCV data, resamples to `CANDLE_TIMEFRAME` candles (default 4-hour), simulates one trade per candle close (Buy if candle closed up, Sell if it closed down), then scores and filters distance buckets by reward/risk ratio. Test bots run equity-curve backtests on the surviving filtered trades.
 
 ## Dependencies
 
@@ -23,6 +23,7 @@ All shared constants live in `config.py` — change values there only:
 | `SL_OFFSET`     | 0.3               | Pip offset added to low (Buy SL) or subtracted from high (Sell SL) |
 | `MIN_RR`        | 1.0               | Minimum reward/risk ratio for a trade to count as a win            |
 | `NUM_WORKERS`   | 3                 | Parallel CPU cores used in step 1 simulation                       |
+| `CANDLE_TIMEFRAME` | `4h`           | Resample timeframe + breakout-window size (`15min` restores old behavior) |
 | `RAW_DATA_FILE` | `XAU_1m_data.csv` | Input 1-minute candle data                                         |
 
 ## 7-Step Pipeline
@@ -35,7 +36,7 @@ Run steps in order. Each step depends on the previous one's output.
 python step1_extract.py
 ```
 
-Loads `XAU_1m_data.csv`, resamples to 15M candles, simulates one trade per candle (multiprocessing), writes all results to `trades.csv`.
+Loads `XAU_1m_data.csv`, resamples to `CANDLE_TIMEFRAME` candles (default 4H), simulates one trade per candle (multiprocessing), writes all results to `trades.csv`.
 
 Output columns: `date, time, day_of_week, type, entry, stop_loss, distance, max_profit, reward_risk`
 
@@ -95,7 +96,7 @@ All test bots load distance buckets from `step3_filtered/{threshold}/`, simulate
 
 | File                           | Candle       | Threshold    | R/R          | Risk         | Fee          | Output                            |
 | ------------------------------ | ------------ | ------------ | ------------ | ------------ | ------------ | --------------------------------- |
-| `test_bot.py`                  | pre-computed | 2            | 1:2          | 0.8%         | 0.08%        | `test_bot_1_2_results.csv`        |
+| `test_bot.py`                  | pre-computed | configurable | configurable | configurable | configurable | `test_bot_results.csv`            |
 | `test_bot_1_25.py`             | pre-computed | 25           | 1:25         | 0.04%        | 0.004%       | —                                 |
 | `test_bot_risk_2.5.py`         | pre-computed | 1            | 1:1          | fixed $500   | —            | —                                 |
 | `1h_test_bot.py`               | 1H live-sim  | 4            | 1:4          | 0.5%         | 0.05%        | `1h_test_bot_results.csv`         |

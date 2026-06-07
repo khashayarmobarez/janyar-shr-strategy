@@ -13,6 +13,11 @@ MIN_RR          = 1.0
 PENALTY_PER_N_TRADES        = 10
 NUM_WORKERS                 = 3   # parallel CPU cores for step1 simulation; change to 4 or 5 to use more
 
+# Candle timeframe the pipeline resamples 1M data to, and the size of the
+# breakout-detection window. A pandas offset alias accepted by both
+# df.resample(...) and pd.Timedelta(...). Set "15min" to restore the old behavior.
+CANDLE_TIMEFRAME    = "4h"
+
 RAW_DATA_FILE       = "XAU_1m_data.csv"
 RAW_TRADES_FILE     = "trades.csv"
 GROUPED_FOLDER      = "step2_grouped"

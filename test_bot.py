@@ -1,46 +1,25 @@
 # test_bot.py
-# Backtest bot based on survived trades from step3_filtered (threshold = 2)
-# Starting capital: $10,000 | Risk per trade: 0.8% of equity | Fee: 0.08% of equity
-# Exit at 1:2 RR (take profit = 2× stop loss distance) or stop loss
-# Only selected Buy/Sell distance files are used; each file is filtered to its own trade type.
+# Backtest bot on survived trades from step3_filtered/{THRESHOLD}/ (pre-computed;
+# the candle timeframe follows whatever step1-3 produced via config.CANDLE_TIMEFRAME).
+# Loads ALL surviving distance files for THRESHOLD; configurable RR / risk / fee.
+# Starting capital: $10,000 | Exit at 1:WIN_RR RR or stop loss
 # Output: test_bot_results.csv + console summary
 
 import pandas as pd
 import os
-from config import FILTERED_FOLDER, RAW_TRADES_FILE
+from config import FILTERED_FOLDER
 
-BUY_FILES = {
-    "Buy_distance_60.csv", "Buy_distance_26.csv", "Buy_distance_35.csv",
-    "Buy_distance_61.csv", "Buy_distance_69.csv", "Buy_distance_13.csv",
-    "Buy_distance_90.csv", "Buy_distance_103.csv", "Buy_distance_40.csv",
-    "Buy_distance_20.csv", "Buy_distance_49.csv", "Buy_distance_27.csv",
-    "Buy_distance_59.csv", "Buy_distance_31.csv", "Buy_distance_34.csv",
-    "Buy_distance_25.csv", "Buy_distance_64.csv", "Buy_distance_45.csv",
-    "Buy_distance_36.csv", "Buy_distance_32.csv", "Buy_distance_46.csv",
-    "Buy_distance_57.csv", "Buy_distance_12.csv", "Buy_distance_18.csv",
-    "Buy_distance_47.csv", "Buy_distance_48.csv", "Buy_distance_24.csv",
-    "Buy_distance_22.csv", "Buy_distance_104.csv", "Buy_distance_42.csv",
-    "Buy_distance_38.csv", "Buy_distance_28.csv", "Buy_distance_39.csv",
-    "Buy_distance_52.csv", "Buy_distance_14.csv", "Buy_distance_11.csv",
-}
-
-SELL_FILES = {
-    "Sell_distance_65.csv", "Sell_distance_38.csv", "Sell_distance_67.csv",
-    "Sell_distance_11.csv", "Sell_distance_18.csv", "Sell_distance_37.csv",
-    "Sell_distance_31.csv", "Sell_distance_112.csv", "Sell_distance_128.csv",
-    "Sell_distance_150.csv", "Sell_distance_91.csv", "Sell_distance_49.csv",
-    "Sell_distance_71.csv", "Sell_distance_215.csv", "Sell_distance_80.csv",
-    "Sell_distance_53.csv", "Sell_distance_63.csv", "Sell_distance_56.csv",
-    "Sell_distance_46.csv", "Sell_distance_81.csv", "Sell_distance_59.csv",
-    "Sell_distance_57.csv", "Sell_distance_28.csv", "Sell_distance_33.csv",
-    "Sell_distance_50.csv", "Sell_distance_45.csv", "Sell_distance_32.csv",
-}
+# --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
+THRESHOLD = 1       # which step3_filtered/{THRESHOLD}/ folder to load
+WIN_RR    = 2.0     # reward:risk; a win pays WIN_RR * risk_amount
+RISK_PCT  = 0.008   # risk per trade as a fraction of current equity
+FEE_PCT   = 0.0008  # fee per trade as a fraction of current equity
 
 
-def load_survived_trades(threshold=2):
+def load_survived_trades(threshold=THRESHOLD):
     """
-    Load selected Buy and Sell distance files from step3_filtered/{threshold}/.
-    Buy files are filtered to type == "Buy"; Sell files to type == "Sell".
+    Load all surviving Buy/Sell distance files from step3_filtered/{threshold}/,
+    merge them, drop duplicates, and sort chronologically.
     """
     subfolder = os.path.join(FILTERED_FOLDER, str(threshold))
     if not os.path.exists(subfolder):
@@ -48,15 +27,10 @@ def load_survived_trades(threshold=2):
         return pd.DataFrame()
 
     frames = []
-    for filename, trade_type in (
-        [(f, "Buy") for f in sorted(BUY_FILES)] +
-        [(f, "Sell") for f in sorted(SELL_FILES)]
-    ):
-        filepath = os.path.join(subfolder, filename)
-        if not os.path.exists(filepath):
+    for filename in os.listdir(subfolder):
+        if not filename.endswith(".csv"):
             continue
-        df = pd.read_csv(filepath)
-        df = df[df["type"] == trade_type]
+        df = pd.read_csv(os.path.join(subfolder, filename))
         if not df.empty:
             frames.append(df)
 
@@ -64,7 +38,7 @@ def load_survived_trades(threshold=2):
         print(f"No trades found for threshold {threshold}")
         return pd.DataFrame()
 
-    merged = pd.concat(frames, ignore_index=True)
+    merged = pd.concat(frames, ignore_index=True).drop_duplicates()
 
     # Sort by date then time ascending
     merged["_datetime"] = pd.to_datetime(
@@ -76,13 +50,13 @@ def load_survived_trades(threshold=2):
     return merged
 
 
-def calculate_trade_pnl(row, account_balance, risk_pct=0.008, fee_pct=0.0008):
+def calculate_trade_pnl(row, account_balance, risk_pct=RISK_PCT, fee_pct=FEE_PCT):
     """
     Calculate PnL for a single trade with percentage-based risk.
-    - Risk per trade: 0.8% of current equity
-    - Fee per trade: 0.08% of current equity (deducted every trade)
-    - If reward_risk >= 2.0: trade hit 1:2 TP -> win (2 × risk_amount)
-    - If reward_risk == "SL": trade hit stop loss -> lose (risk_amount)
+    - Risk per trade: RISK_PCT of current equity
+    - Fee per trade: FEE_PCT of current equity (deducted every trade)
+    - If reward_risk >= WIN_RR: trade hit 1:WIN_RR TP -> win (WIN_RR × risk_amount)
+    - If reward_risk == "SL" (or below WIN_RR): trade lost -> lose (risk_amount)
 
     Returns: (pnl, risk_pct_used)
     """
@@ -96,15 +70,15 @@ def calculate_trade_pnl(row, account_balance, risk_pct=0.008, fee_pct=0.0008):
 
     try:
         rr_val = float(rr)
-        if rr_val >= 2.0:
-            return (2 * risk_amount - fee), risk_pct
+        if rr_val >= WIN_RR:
+            return (WIN_RR * risk_amount - fee), risk_pct
         else:
             return -(risk_amount + fee), risk_pct
     except (ValueError, TypeError):
         return -(risk_amount + fee), risk_pct
 
 
-def run_backtest(trades_df, initial_capital=10000, risk_pct=0.008, fee_pct=0.0008):
+def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FEE_PCT):
     """
     Run the backtest simulation with percentage-based risk.
     """
@@ -190,12 +164,12 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=0.008, fee_pct=0.000
 
 def main():
     print("=" * 60)
-    print("TEST BOT - Backtest on Survived Trades (Threshold = 2)")
+    print(f"TEST BOT - Backtest on Survived Trades (Threshold = {THRESHOLD})")
     print("=" * 60)
 
     # Load survived trades
-    print("\nLoading survived trades (threshold=2, selected files only)...")
-    trades_df = load_survived_trades(threshold=2)
+    print(f"\nLoading survived trades (threshold={THRESHOLD}, all files)...")
+    trades_df = load_survived_trades(threshold=THRESHOLD)
 
     if trades_df.empty:
         print("No survived trades found. Exiting.")
@@ -208,18 +182,18 @@ def main():
     # Run backtest
     print("\nRunning backtest...")
     print(f"  Initial capital: $10,000")
-    print(f"  Risk per trade: 0.8% of equity")
-    print(f"  Fee per trade: 0.08% of equity")
-    print(f"  Exit: 1:2 RR (TP = 2x SL distance) or stop loss")
+    print(f"  Risk per trade: {RISK_PCT*100:.3g}% of equity")
+    print(f"  Fee per trade: {FEE_PCT*100:.3g}% of equity")
+    print(f"  Exit: 1:{WIN_RR:g} RR (TP = {WIN_RR:g}x SL distance) or stop loss")
     print()
 
-    result, stats = run_backtest(trades_df, initial_capital=10000, risk_pct=0.008, fee_pct=0.0008)
+    result, stats = run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FEE_PCT)
 
     if result is None:
         return
 
     # Save results
-    output_file = "test_bot_1_2_results.csv"
+    output_file = "test_bot_results.csv"
     result.to_csv(output_file, index=False)
     print(f"Results saved to {output_file}")
 

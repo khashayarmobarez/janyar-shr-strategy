@@ -1,5 +1,9 @@
 """
 Production-ready backtesting bot with robust error handling and validation.
+
+Timeframe-agnostic: it reads the surviving distance buckets from
+step3_filtered/{threshold}/, so it follows whatever candle timeframe step1-3
+produced (config.CANDLE_TIMEFRAME). Wins pay win_rr * risk_amount (--rr).
 """
 
 import pandas as pd
@@ -32,9 +36,10 @@ class BacktestConfig:
     initial_capital: float = 10000.0
     risk_pct: float = 0.05
     fee_pct: float = 0.005
+    win_rr: float = 1.0  # reward:risk; a win pays win_rr * risk_amount
     filtered_folder: str = "step3_filtered"
     output_file: str = None  # Will be auto-generated if None
-    
+
     def __post_init__(self):
         """Validate configuration parameters."""
         if self.initial_capital <= 0:
@@ -45,6 +50,8 @@ class BacktestConfig:
             raise ValueError(f"Fee percentage must be between 0 and 1, got {self.fee_pct}")
         if self.threshold < 0:
             raise ValueError(f"Threshold must be non-negative, got {self.threshold}")
+        if self.win_rr <= 0:
+            raise ValueError(f"Win reward/risk must be positive, got {self.win_rr}")
         
         # Auto-generate output filename if not provided
         if self.output_file is None:
@@ -229,13 +236,13 @@ class BacktestEngine:
         account_balance: float
     ) -> Tuple[float, bool]:
         """
-        Calculate PnL for a single trade with 1:1 exit strategy.
-        
-        - Risk per trade: 5% of current equity
-        - Fee per trade: 0.5% of current equity
-        - If reward_risk >= 1.0: trade hits 1:1 TP → win risk_amount (not risk_amount * reward_risk)
-        - If reward_risk == "SL": trade hits stop loss → lose risk_amount
-        
+        Calculate PnL for a single trade with a 1:win_rr exit strategy.
+
+        - Risk per trade: risk_pct of current equity
+        - Fee per trade: fee_pct of current equity
+        - If reward_risk >= win_rr: trade hits 1:win_rr TP → win win_rr * risk_amount
+        - If reward_risk == "SL" (or below win_rr): trade lost → lose risk_amount
+
         Returns:
             Tuple of (pnl, is_win)
         """
@@ -258,12 +265,12 @@ class BacktestEngine:
             else:
                 try:
                     reward_risk = float(reward_risk_str)
-                    if reward_risk >= 1.0:
-                        # Hit 1:1 take profit: win risk_amount - fee
+                    if reward_risk >= self.config.win_rr:
+                        # Hit 1:win_rr take profit: win win_rr * risk_amount - fee
                         is_win = True
-                        pnl = risk_amount - fee
+                        pnl = self.config.win_rr * risk_amount - fee
                     else:
-                        # Positive RR but below 1.0 — treat as stop loss hit
+                        # Positive RR but below win_rr — treat as stop loss hit
                         is_win = False
                         pnl = -(risk_amount + fee)
                 except (ValueError, TypeError):
@@ -428,6 +435,7 @@ class ResultsReporter:
         print(f"  Initial Capital: ${config.initial_capital:,.2f}")
         print(f"  Risk per Trade: {config.risk_pct*100:.1f}%")
         print(f"  Fee per Trade: {config.fee_pct*100:.2f}%")
+        print(f"  Win R/R: 1:{config.win_rr:g}")
         print(f"  Threshold: {config.threshold}")
         
         print(f"\nOverall Performance:")
@@ -518,7 +526,14 @@ def parse_arguments():
         default=0.005,
         help='Fee percentage per trade (0.005 = 0.5%%)'
     )
-    
+
+    parser.add_argument(
+        '--rr',
+        type=float,
+        default=1.0,
+        help='Win reward/risk multiple; a win pays rr * risk_amount'
+    )
+
     parser.add_argument(
         '--folder',
         type=str,
@@ -558,6 +573,7 @@ def main():
             initial_capital=args.capital,
             risk_pct=args.risk,
             fee_pct=args.fee,
+            win_rr=args.rr,
             filtered_folder=args.folder,
             output_file=args.output
         )
