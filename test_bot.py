@@ -10,10 +10,10 @@ import os
 from config import FILTERED_FOLDER
 
 # --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
-THRESHOLD = 1       # which step3_filtered/{THRESHOLD}/ folder to load
-WIN_RR    = 2.0     # reward:risk; a win pays WIN_RR * risk_amount
-RISK_PCT  = 0.008   # risk per trade as a fraction of current equity
-FEE_PCT   = 0.0008  # fee per trade as a fraction of current equity
+THRESHOLD = 19      # which step3_filtered/{THRESHOLD}/ folder to load
+WIN_RR    = 19.0    # reward:risk; a win pays WIN_RR * risk_amount
+RISK_PCT  = 0.0013  # risk per trade as a fraction of current equity
+FEE_PCT   = 0.00013 # fee per trade as a fraction of current equity
 
 
 def load_survived_trades(threshold=THRESHOLD):
@@ -141,6 +141,10 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
         yearly_data[year]["trades"] += 1
         yearly_data[year]["pnl"] += pnl
 
+        open_dt  = pd.to_datetime(row["date"] + " " + row["time"])
+        close_dt = pd.to_datetime(row["close_time"]) if "close_time" in row and pd.notna(row["close_time"]) else None
+        duration_h = round((close_dt - open_dt).total_seconds() / 3600, 1) if close_dt else None
+
         equity_curve.append({
             "trade_index": idx + 1,
             "date": row["date"],
@@ -150,6 +154,8 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
             "stop_loss": row["stop_loss"],
             "distance": row["distance"],
             "reward_risk": row["reward_risk"],
+            "close_time": row.get("close_time"),
+            "duration_hours": duration_h,
             "pnl": pnl,
             "balance": account_balance,
             "drawdown_pct": drawdown * 100,
@@ -212,6 +218,11 @@ def main():
     print(f"  Final balance    : ${stats['final_balance']:.2f}")
     print(f"  Max drawdown     : {stats['max_drawdown']*100:.2f}%")
     print(f"  Max equity       : ${stats['max_equity']:.2f}")
+
+    durations = result["duration_hours"].dropna()
+    if not durations.empty:
+        print(f"  Avg duration     : {durations.mean():.1f} h")
+        print(f"  Max duration     : {durations.max():.1f} h")
     print("=" * 60)
 
     # Win/loss distribution

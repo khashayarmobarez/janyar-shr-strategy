@@ -7,7 +7,7 @@
 #
 # Output columns:
 #   date, time, day_of_week, type, entry, stop_loss,
-#   distance, max_profit, reward_risk
+#   distance, max_profit, reward_risk, close_time
 #
 
 
@@ -85,18 +85,20 @@ def simulate_trade(direction, entry, stop_loss, distance, minute_times, minute_h
     start_pos = int(np.searchsorted(minute_times, start_dt.to_datetime64(), side="left"))
 
     if start_pos >= len(minute_times):
-        return 0.0, "SL"
+        return 0.0, "SL", None
 
     if direction == "Buy":
         sub_high = minute_high[start_pos:]
         sub_low  = minute_low[start_pos:]
-        normal_hits  = np.flatnonzero(sub_low <= stop_loss)
+        normal_hits   = np.flatnonzero(sub_low <= stop_loss)
         favorable_arr = sub_high - entry
     else:
         sub_high = minute_high[start_pos:]
         sub_low  = minute_low[start_pos:]
-        normal_hits  = np.flatnonzero(sub_high >= stop_loss)
+        normal_hits   = np.flatnonzero(sub_high >= stop_loss)
         favorable_arr = entry - sub_low
+
+    tp_hits = np.flatnonzero(favorable_arr >= MIN_RR * distance)
 
     if normal_hits.size:
         exit_idx = int(normal_hits[0])
@@ -104,14 +106,24 @@ def simulate_trade(direction, entry, stop_loss, distance, minute_times, minute_h
         if max_favorable < 0:
             max_favorable = 0.0
         rr = max_favorable / distance
-        return round(max_favorable, 6), round(rr, 1) if rr >= MIN_RR else "SL"
+        if tp_hits.size and int(tp_hits[0]) < exit_idx:
+            close_ts = pd.Timestamp(minute_times[start_pos + int(tp_hits[0])])
+        else:
+            close_ts = pd.Timestamp(minute_times[start_pos + exit_idx])
+        close_time = close_ts.strftime("%Y-%m-%d %H:%M")
+        return round(max_favorable, 6), round(rr, 1) if rr >= MIN_RR else "SL", close_time
 
     # End of data without SL hit
     max_favorable = float(np.max(favorable_arr)) if len(favorable_arr) else 0.0
     if max_favorable < 0:
         max_favorable = 0.0
     rr = max_favorable / distance if distance > 0 else 0.0
-    return round(max_favorable, 6), round(rr, 1) if rr >= MIN_RR else "SL"
+    if tp_hits.size:
+        close_ts = pd.Timestamp(minute_times[start_pos + int(tp_hits[0])])
+    else:
+        close_ts = pd.Timestamp(minute_times[start_pos + len(favorable_arr) - 1])
+    close_time = close_ts.strftime("%Y-%m-%d %H:%M")
+    return round(max_favorable, 6), round(rr, 1) if rr >= MIN_RR else "SL", close_time
 
 
 # ---------------------------------------------------------------
@@ -167,7 +179,7 @@ def _process_box(i):
     if distance == 0:
         return None
 
-    max_profit, reward_risk = simulate_trade(
+    max_profit, reward_risk, close_time = simulate_trade(
         direction, entry, stop_loss, distance,
         _minute_times, _minute_high, _minute_low, trigger_dt,
     )
@@ -181,6 +193,7 @@ def _process_box(i):
         "distance"    : round(distance, 6),
         "max_profit"  : max_profit,
         "reward_risk" : reward_risk,
+        "close_time"  : close_time,
     }
 
 
