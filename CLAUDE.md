@@ -38,7 +38,7 @@ python step1_extract.py
 
 Loads `XAU_1m_data.csv`, resamples to `CANDLE_TIMEFRAME` candles (default 4H), simulates one trade per candle (multiprocessing), writes all results to `trades.csv`.
 
-Output columns: `date, time, day_of_week, type, entry, stop_loss, distance, max_profit, reward_risk`
+Output columns: `date, time, day_of_week, type, entry, stop_loss, distance, max_profit, reward_risk, close_time`
 
 ### Step 2 — Group by distance
 

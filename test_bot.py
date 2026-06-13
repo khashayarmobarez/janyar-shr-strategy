@@ -10,10 +10,10 @@ import os
 from config import FILTERED_FOLDER
 
 # --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
-THRESHOLD = 19      # which step3_filtered/{THRESHOLD}/ folder to load
-WIN_RR    = 19.0    # reward:risk; a win pays WIN_RR * risk_amount
-RISK_PCT  = 0.0013  # risk per trade as a fraction of current equity
-FEE_PCT   = 0.00013 # fee per trade as a fraction of current equity
+THRESHOLD = 451     # which step3_filtered/{THRESHOLD}/ folder to load
+WIN_RR    = 451.0   # reward:risk; a win pays WIN_RR * risk_amount
+RISK_PCT  = 0.0006  # risk per trade as a fraction of current equity
+FEE_PCT   = 0.00006 # fee per trade as a fraction of current equity
 
 
 def load_survived_trades(threshold=THRESHOLD):
@@ -227,8 +227,14 @@ def main():
 
     # Win/loss distribution
     print("\nWin/Loss by Type:")
-    print(f"  Buy win rate: {stats['buy_wins']/stats['buy_trades']*100:.1f}% ({stats['buy_wins']}/{stats['buy_trades']})")
-    print(f"  Sell win rate: {stats['sell_wins']/stats['sell_trades']*100:.1f}% ({stats['sell_wins']}/{stats['sell_trades']})")
+    if stats['buy_trades']:
+        print(f"  Buy win rate: {stats['buy_wins']/stats['buy_trades']*100:.1f}% ({stats['buy_wins']}/{stats['buy_trades']})")
+    else:
+        print(f"  Buy win rate: N/A (0 buy trades)")
+    if stats['sell_trades']:
+        print(f"  Sell win rate: {stats['sell_wins']/stats['sell_trades']*100:.1f}% ({stats['sell_wins']}/{stats['sell_trades']})")
+    else:
+        print(f"  Sell win rate: N/A (0 sell trades)")
 
     # Yearly performance
     print("\n" + "=" * 60)
