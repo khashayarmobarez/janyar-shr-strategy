@@ -16,7 +16,7 @@ NUM_WORKERS                 = 3   # parallel CPU cores for step1 simulation; cha
 # Candle timeframe the pipeline resamples 1M data to, and the size of the
 # breakout-detection window. A pandas offset alias accepted by both
 # df.resample(...) and pd.Timedelta(...). Set "15min" to restore the old behavior.
-CANDLE_TIMEFRAME    = "4h"
+CANDLE_TIMEFRAME    = "15min"
 
 RAW_DATA_FILE       = "XAU_1m_data.csv"
 RAW_TRADES_FILE     = "trades.csv"
