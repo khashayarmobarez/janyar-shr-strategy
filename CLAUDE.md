@@ -19,7 +19,6 @@ All shared constants live in `config.py` — change values there only:
 
 | Constant        | Default           | Description                                                        |
 | --------------- | ----------------- | ------------------------------------------------------------------ |
-| `ENTRY_OFFSET`  | 0.3               | Pip offset added/subtracted from close price for entry             |
 | `SL_OFFSET`     | 0.3               | Pip offset added to low (Buy SL) or subtracted from high (Sell SL) |
 | `MIN_RR`        | 1.0               | Minimum reward/risk ratio for a trade to count as a win            |
 | `NUM_WORKERS`   | 3                 | Parallel CPU cores used in step 1 simulation                       |
@@ -158,10 +157,9 @@ Detection logic lives in `box_strategy.py` (shared by `step1_extract.py`, `15m_t
   - **Model 1 — alternating**: `bull,bear,bull` or `bear,bull,bear` (no extra rule).
   - **Model 2 — one adjacent same-color pair** (e.g. `bull,bull,bear`): the pair's 2nd candle close must not pass the 1st candle's wick extreme (bull pair → 2nd close ≤ 1st high; bear pair → 2nd close ≥ 1st low).
   - **Model 3 — all same color** (`bull,bull,bull` / `bear,bear,bear`): 2nd close within 1st's wick extreme **and** 3rd close within 2nd's wick extreme.
-  - A candle with `close == open` (doji) invalidates the triple.
 - **Breakout**: only the **immediately-next candle** (`i+1`) may trigger entry. Within its 1M bars, the first bar to reach a breakout level opens the trade:
-  - **Buy**: price reaches `box_top + ENTRY_OFFSET` → entry = `box_top + ENTRY_OFFSET`, SL = `box_bottom − SL_OFFSET`
-  - **Sell**: price reaches `box_bottom − ENTRY_OFFSET` → entry = `box_bottom − ENTRY_OFFSET`, SL = `box_top + SL_OFFSET`
+  - **Buy**: price reaches `box_top` → entry = `box_top`, SL = `box_bottom − SL_OFFSET`
+  - **Sell**: price reaches `box_bottom` → entry = `box_bottom`, SL = `box_top + SL_OFFSET`
   - If a single 1M bar reaches both levels (engulfing), the signal is ambiguous and skipped; otherwise the earlier-reached level wins. If neither level is reached, no trade.
 - **Distance bucket**: `floor(|entry − stop_loss|)` — used to group and filter trades
 - **Win condition**: price reaches `entry ± (WIN_RR × distance)` before hitting stop loss

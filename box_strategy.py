@@ -8,8 +8,8 @@
 #   - Three consecutive candles whose colors match one of three models form a
 #     "box" spanning the highest high to the lowest low of the three.
 #   - The IMMEDIATELY-NEXT candle that pierces the box triggers a trade:
-#       pierce the top  -> Buy   (entry = box_top + ENTRY_OFFSET)
-#       pierce the bottom -> Sell (entry = box_bottom - ENTRY_OFFSET)
+#       pierce the top    -> Buy   (entry = box_top)
+#       pierce the bottom -> Sell  (entry = box_bottom)
 #   - Stop loss: Buy = box_bottom - SL_OFFSET, Sell = box_top + SL_OFFSET.
 #
 # A candle tuple is (open, high, low, close).
@@ -17,16 +17,12 @@
 import numpy as np
 import pandas as pd
 
-from config import ENTRY_OFFSET, SL_OFFSET
+from config import SL_OFFSET
 
 
 def classify(open_, close):
-    """Candle color. 'doji' (close == open) invalidates any triple it sits in."""
-    if close > open_:
-        return "bull"
-    if close < open_:
-        return "bear"
-    return "doji"
+    """Candle color: bull if close > open, bear otherwise."""
+    return "bull" if close > open_ else "bear"
 
 
 def box_signal(c1, c2, c3):
@@ -37,9 +33,6 @@ def box_signal(c1, c2, c3):
     Returns (valid, box_top, box_bottom). box_top/box_bottom are None when invalid.
     """
     cols = [classify(c[0], c[3]) for c in (c1, c2, c3)]
-    if "doji" in cols:
-        return False, None, None
-
     k1, k2, k3 = cols
     valid = False
 
@@ -81,8 +74,8 @@ def find_breakout(box_top, box_bottom, win_start, win_end,
     Scan the 1-minute bars of the breakout candle (the window [win_start, win_end))
     for the first bar that reaches a box-breakout entry level.
 
-    Buy entry  = box_top    + ENTRY_OFFSET
-    Sell entry = box_bottom - ENTRY_OFFSET
+    Buy entry  = box_top
+    Sell entry = box_bottom
 
     Returns (direction, entry, stop_loss, trigger_dt) or None when no entry triggers.
     If a single 1-min bar reaches both levels, the signal is ambiguous and skipped.
@@ -95,8 +88,8 @@ def find_breakout(box_top, box_bottom, win_start, win_end,
     sub_high = minute_high[lo:hi]
     sub_low  = minute_low[lo:hi]
 
-    buy_entry  = box_top + ENTRY_OFFSET
-    sell_entry = box_bottom - ENTRY_OFFSET
+    buy_entry  = box_top
+    sell_entry = box_bottom
 
     buy_hits  = np.flatnonzero(sub_high >= buy_entry)
     sell_hits = np.flatnonzero(sub_low <= sell_entry)

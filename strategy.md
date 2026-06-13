@@ -14,7 +14,7 @@ A box is formed from three consecutive candles. Its boundaries are:
 - **Box bottom**: the lowest price (wick) reached across all three candles
 - **Box length (distance)**: `box_top − box_bottom`
 
-The three candles must match one of the three models below. A doji candle (`close == open`) in any position invalidates the pattern.
+The three candles must match one of the three models below.
 
 ---
 
@@ -22,10 +22,10 @@ The three candles must match one of the three models below. A doji candle (`clos
 
 After a valid box is formed, only the **immediately next candle** can trigger an entry. If it does not trigger, no trade is taken.
 
-| Direction | Trigger condition                              | Entry price        | Stop loss          |
-| --------- | ---------------------------------------------- | ------------------ | ------------------ |
-| **Buy**   | Next candle's price reaches `box_top + 0.3`    | `box_top + 0.3`    | `box_bottom − 0.3` |
-| **Sell**  | Next candle's price reaches `box_bottom − 0.3` | `box_bottom − 0.3` | `box_top + 0.3`    |
+| Direction | Trigger condition                           | Entry price    | Stop loss          |
+| --------- | ------------------------------------------- | -------------- | ------------------ |
+| **Buy**   | Next candle's price reaches `box_top`       | `box_top`      | `box_bottom − 0.3` |
+| **Sell**  | Next candle's price reaches `box_bottom`    | `box_bottom`   | `box_top + 0.3`    |
 
 The simulation scans 1-minute bars inside the breakout candle to find the exact bar that first reaches an entry level.
 
