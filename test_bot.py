@@ -10,10 +10,10 @@ import os
 from config import FILTERED_FOLDER
 
 # --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
-THRESHOLD = 451     # which step3_filtered/{THRESHOLD}/ folder to load
-WIN_RR    = 451.0   # reward:risk; a win pays WIN_RR * risk_amount
-RISK_PCT  = 0.0006  # risk per trade as a fraction of current equity
-FEE_PCT   = 0.00006 # fee per trade as a fraction of current equity
+THRESHOLD = 1       # which step3_filtered/{THRESHOLD}/ folder to load
+WIN_RR    = 1.0     # reward:risk; a win pays WIN_RR * risk_amount
+RISK_PCT  = 0.0312  # risk per trade as a fraction of current equity
+FEE_PCT   = 0.00312 # fee per trade as a fraction of current equity
 
 
 def load_survived_trades(threshold=THRESHOLD):
