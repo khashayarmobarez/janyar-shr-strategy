@@ -9,7 +9,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from config import FILTERED_FOLDER, RAW_DATA_FILE
+from config import FILTERED_FOLDER, RAW_DATA_FILE, DATA_START
 from box_strategy import box_signal, find_breakout
 
 WIN_RR   = 823.0
@@ -64,7 +64,7 @@ def load_minute_data(filepath):
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df = df.dropna(subset=["open", "high", "low", "close"])
-    df = df[df.index >= "2011-01-03 04:00"]
+    df = df[df.index >= DATA_START]
     return df
 
 

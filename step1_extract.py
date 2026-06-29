@@ -21,6 +21,7 @@ from config import (
     RAW_TRADES_FILE,
     NUM_WORKERS,
     CANDLE_TIMEFRAME,
+    DATA_START,
 )
 from box_strategy import box_signal, find_breakout
 
@@ -47,8 +48,8 @@ def load_minute_data(filepath):
 
     df = df.dropna(subset=["open", "high", "low", "close"])
 
-    # Remove all data before 2011.01.03 04:00 (exact start date)
-    df = df[df.index >= "2011-01-03 04:00"]
+    # Remove all data before DATA_START (config.py)
+    df = df[df.index >= DATA_START]
 
     return df
 

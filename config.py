@@ -13,7 +13,12 @@ NUM_WORKERS                 = 3   # parallel CPU cores for step1 simulation; cha
 # Candle timeframe the pipeline resamples 1M data to, and the size of the
 # breakout-detection window. A pandas offset alias accepted by both
 # df.resample(...) and pd.Timedelta(...). Set "15min" to restore the old behavior.
-CANDLE_TIMEFRAME    = "15min"
+CANDLE_TIMEFRAME    = "1D"
+
+# Earliest 1M bar to keep. Bars before this timestamp are dropped during
+# extraction (step1) and in the live-sim test bots. Raw data begins 2004.06.11,
+# so "2004-01-01 00:00" keeps everything available.
+DATA_START          = "2004-01-01 00:00"
 
 RAW_DATA_FILE       = "XAU_1m_data.csv"
 RAW_TRADES_FILE     = "trades.csv"
