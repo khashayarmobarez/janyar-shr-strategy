@@ -17,6 +17,8 @@ from dataclasses import dataclass, asdict
 import argparse
 import json
 
+from thresholds import fmt_threshold
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -32,7 +34,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class BacktestConfig:
     """Configuration for backtest parameters."""
-    threshold: int = 1
+    threshold: float = 1  # may be a decimal, e.g. 1.3
     initial_capital: float = 10000.0
     risk_pct: float = 0.05
     fee_pct: float = 0.005
@@ -146,7 +148,7 @@ class TradeDataLoader:
         Returns:
             DataFrame with all trades, or None if loading fails
         """
-        threshold_path = Path(self.config.filtered_folder) / str(self.config.threshold)
+        threshold_path = Path(self.config.filtered_folder) / fmt_threshold(self.config.threshold)
         
         # Validate path exists
         if not threshold_path.exists():
@@ -501,9 +503,9 @@ def parse_arguments():
     
     parser.add_argument(
         '--threshold',
-        type=int,
+        type=float,
         default=1,
-        help='Threshold value for filtered trades folder'
+        help='Threshold value for filtered trades folder (may be a decimal, e.g. 1.3)'
     )
     
     parser.add_argument(

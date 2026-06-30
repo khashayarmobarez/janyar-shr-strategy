@@ -5,6 +5,15 @@
 import pandas as pd
 import os
 from config import FILTERED_FOLDER, LISTS_FOLDER
+from thresholds import fmt_threshold
+
+
+def _as_threshold(name):
+    """Parse a threshold folder name to float, or None if it isn't one."""
+    try:
+        return float(name)
+    except (ValueError, TypeError):
+        return None
 
 
 def main():
@@ -15,13 +24,13 @@ def main():
     os.makedirs(LISTS_FOLDER, exist_ok=True)
 
     # Each subdirectory in FILTERED_FOLDER is a threshold value
-    for threshold_dir in sorted(os.listdir(FILTERED_FOLDER), key=lambda x: int(x) if x.isdigit() else -1):
+    for threshold_dir in sorted(os.listdir(FILTERED_FOLDER),
+                                key=lambda x: _as_threshold(x) if _as_threshold(x) is not None else -1):
         subfolder = os.path.join(FILTERED_FOLDER, threshold_dir)
 
-        if not os.path.isdir(subfolder) or not threshold_dir.isdigit():
+        T = _as_threshold(threshold_dir)
+        if not os.path.isdir(subfolder) or T is None:
             continue
-
-        T = int(threshold_dir)
         frames = []
 
         for filename in os.listdir(subfolder):
@@ -33,7 +42,7 @@ def main():
                 frames.append(df)
 
         if not frames:
-            print(f"Threshold {T}: no surviving trades, skipping.")
+            print(f"Threshold {fmt_threshold(T)}: no surviving trades, skipping.")
             continue
 
         merged = pd.concat(frames, ignore_index=True)
@@ -45,9 +54,9 @@ def main():
         merged = merged.sort_values("_datetime").drop(columns=["_datetime"])
         merged = merged.reset_index(drop=True)
 
-        out_path = os.path.join(LISTS_FOLDER, f"list_rr_{T}.csv")
+        out_path = os.path.join(LISTS_FOLDER, f"list_rr_{fmt_threshold(T)}.csv")
         merged.to_csv(out_path, index=False)
-        print(f"Threshold {T}: {len(merged)} trades → {out_path}")
+        print(f"Threshold {fmt_threshold(T)}: {len(merged)} trades → {out_path}")
 
     print(f"\nStep 4 complete. Lists saved to {LISTS_FOLDER}.")
 

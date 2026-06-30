@@ -8,9 +8,10 @@
 import pandas as pd
 import os
 from config import FILTERED_FOLDER
+from thresholds import fmt_threshold
 
 # --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
-THRESHOLD = 4       # which step3_filtered/{THRESHOLD}/ folder to load
+THRESHOLD = 4       # which step3_filtered/{THRESHOLD}/ folder to load (may be a decimal, e.g. 1.3)
 WIN_RR    = 4.0     # reward:risk; a win pays WIN_RR * risk_amount
 RISK_PCT  = 0.0312  # risk per trade as a fraction of current equity
 FEE_PCT   = 0.00312 # fee per trade as a fraction of current equity
@@ -21,7 +22,7 @@ def load_survived_trades(threshold=THRESHOLD):
     Load all surviving Buy/Sell distance files from step3_filtered/{threshold}/,
     merge them, drop duplicates, and sort chronologically.
     """
-    subfolder = os.path.join(FILTERED_FOLDER, str(threshold))
+    subfolder = os.path.join(FILTERED_FOLDER, fmt_threshold(threshold))
     if not os.path.exists(subfolder):
         print(f"ERROR: {subfolder} not found.")
         return pd.DataFrame()

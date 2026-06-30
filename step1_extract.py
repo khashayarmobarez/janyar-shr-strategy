@@ -24,6 +24,7 @@ from config import (
     DATA_START,
 )
 from box_strategy import box_signal, find_breakout
+from thresholds import generate_thresholds
 
 
 # ---------------------------------------------------------------
@@ -264,7 +265,7 @@ def run():
     # -- Available R/R thresholds for downstream steps --
     numeric_rr = pd.to_numeric(df["reward_risk"], errors="coerce")
     positive_rr = numeric_rr[numeric_rr >= MIN_RR]
-    thresholds  = sorted(positive_rr.apply(np.floor).astype(int).unique().tolist())
+    thresholds  = generate_thresholds(positive_rr.max() if not positive_rr.empty else None)
     print(f"  R/R thresholds : {thresholds}")
     print()
 

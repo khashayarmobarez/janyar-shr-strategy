@@ -8,6 +8,7 @@
 import pandas as pd
 import os
 from config import FILTERED_FOLDER
+from thresholds import fmt_threshold
 
 BUY_FILES = {
     "Buy_distance_26.csv", "Buy_distance_10.csv", "Buy_distance_30.csv",
@@ -38,7 +39,7 @@ def load_survived_trades(threshold=25):
     Load selected Buy and Sell distance files from step3_filtered/{threshold}/.
     Buy files are filtered to type == "Buy"; Sell files to type == "Sell".
     """
-    subfolder = os.path.join(FILTERED_FOLDER, str(threshold))
+    subfolder = os.path.join(FILTERED_FOLDER, fmt_threshold(threshold))
     if not os.path.exists(subfolder):
         print(f"ERROR: {subfolder} not found.")
         return pd.DataFrame()

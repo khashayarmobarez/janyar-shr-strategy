@@ -63,7 +63,7 @@ def main():
         if not filename.startswith("list_rr_") or not filename.endswith(".csv"):
             continue
 
-        T = int(filename.replace("list_rr_", "").replace(".csv", ""))
+        T = float(filename.replace("list_rr_", "").replace(".csv", ""))
         filepath = os.path.join(LISTS_FOLDER, filename)
         df = pd.read_csv(filepath).reset_index(drop=True)
 

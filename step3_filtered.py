@@ -1,8 +1,8 @@
 import pandas as pd
 import math
 import os
-import numpy as np
 from config import GROUPED_FOLDER, FILTERED_FOLDER, MIN_RR
+from thresholds import generate_thresholds, fmt_threshold
 
 
 
@@ -48,9 +48,10 @@ def main():
         df_trades = pd.read_csv("trades.csv")
         numeric_rr = pd.to_numeric(df_trades["reward_risk"], errors="coerce")
         positive_rr = numeric_rr[numeric_rr >= MIN_RR]
-        thresholds = sorted(positive_rr.apply(np.floor).astype(int).unique().tolist())
+        max_rr = positive_rr.max() if not positive_rr.empty else None
+        thresholds = generate_thresholds(max_rr)
     else:
-        thresholds = [int(MIN_RR)]  # default
+        thresholds = [float(MIN_RR)]  # default
 
     print(f"Thresholds: {thresholds}")
 
@@ -71,7 +72,7 @@ def main():
             if score > 0:
                 surviving.append(filename)
                 # Copy file to filtered subfolder (optional)
-                subfolder = os.path.join(FILTERED_FOLDER, str(T))
+                subfolder = os.path.join(FILTERED_FOLDER, fmt_threshold(T))
                 os.makedirs(subfolder, exist_ok=True)
                 df.to_csv(os.path.join(subfolder, filename), index=False)
         surviving_files[T] = surviving
@@ -83,7 +84,7 @@ def main():
         f.write("threshold,filename\n")
         for T, files in surviving_files.items():
             for filename in files:
-                f.write(f"{T},{filename}\n")
+                f.write(f"{fmt_threshold(T)},{filename}\n")
     print(f"Manifest saved to {manifest_path}")
 
 

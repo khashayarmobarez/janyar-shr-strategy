@@ -40,7 +40,7 @@ def main():
             continue
 
         # Extract threshold from filename: list_rr_{T}.csv
-        T = int(filename.replace("list_rr_", "").replace(".csv", ""))
+        T = float(filename.replace("list_rr_", "").replace(".csv", ""))
         filepath = os.path.join(LISTS_FOLDER, filename)
         df = pd.read_csv(filepath)
 

@@ -7,6 +7,7 @@
 import pandas as pd
 import os
 from config import FILTERED_FOLDER, RAW_TRADES_FILE
+from thresholds import fmt_threshold
 
 
 def load_survived_trades(threshold=1):
@@ -14,7 +15,7 @@ def load_survived_trades(threshold=1):
     Load all survived trades for a given threshold from step3_filtered/{threshold}/
     Files are named like Buy_distance_XX.csv and Sell_distance_XX.csv
     """
-    subfolder = os.path.join(FILTERED_FOLDER, str(threshold))
+    subfolder = os.path.join(FILTERED_FOLDER, fmt_threshold(threshold))
     if not os.path.exists(subfolder):
         print(f"ERROR: {subfolder} not found.")
         return pd.DataFrame()

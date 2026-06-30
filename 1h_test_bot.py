@@ -11,6 +11,7 @@ import pandas as pd
 
 from config import FILTERED_FOLDER, RAW_DATA_FILE, DATA_START
 from box_strategy import box_signal, find_breakout
+from thresholds import fmt_threshold
 
 WIN_RR   = 4.0
 RISK_PCT = 0.005
@@ -22,7 +23,7 @@ FEE_PCT  = 0.0005
 # ---------------------------------------------------------------
 
 def load_valid_buckets(threshold=4):
-    folder = os.path.join(FILTERED_FOLDER, str(threshold))
+    folder = os.path.join(FILTERED_FOLDER, fmt_threshold(threshold))
     if not os.path.exists(folder):
         print(f"ERROR: {folder} not found.")
         return set()
