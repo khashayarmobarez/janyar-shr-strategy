@@ -30,6 +30,15 @@ def compute_score(df, threshold):
     return score
 
 
+def write_manifest(files_by_threshold, manifest_path):
+    """Write a threshold,filename manifest (one row per file per threshold)."""
+    with open(manifest_path, "w") as f:
+        f.write("threshold,filename\n")
+        for T, files in files_by_threshold.items():
+            for filename in files:
+                f.write(f"{fmt_threshold(T)},{filename}\n")
+
+
 def main():
     """
     Step 3 – Score and Filter.
@@ -58,10 +67,12 @@ def main():
     # Ensure filtered folder exists
     os.makedirs(FILTERED_FOLDER, exist_ok=True)
 
-    # Collect surviving files per threshold
+    # Collect surviving and removed files per threshold
     surviving_files = {}
+    removed_files = {}
     for T in thresholds:
         surviving = []
+        removed = []
         # List all grouped CSV files
         for filename in os.listdir(GROUPED_FOLDER):
             if not filename.endswith(".csv"):
@@ -75,17 +86,21 @@ def main():
                 subfolder = os.path.join(FILTERED_FOLDER, fmt_threshold(T))
                 os.makedirs(subfolder, exist_ok=True)
                 df.to_csv(os.path.join(subfolder, filename), index=False)
+            else:
+                # Removed distance bucket (score <= 0): recorded, not materialized
+                removed.append(filename)
         surviving_files[T] = surviving
-        print(f"Threshold {T}: {len(surviving)} surviving files")
+        removed_files[T] = removed
+        print(f"Threshold {T}: {len(surviving)} surviving files, {len(removed)} removed")
 
-    # Write manifest (optional)
-    manifest_path = os.path.join(FILTERED_FOLDER, "surviving_files.csv")
-    with open(manifest_path, "w") as f:
-        f.write("threshold,filename\n")
-        for T, files in surviving_files.items():
-            for filename in files:
-                f.write(f"{fmt_threshold(T)},{filename}\n")
-    print(f"Manifest saved to {manifest_path}")
+    # Write manifests
+    surviving_path = os.path.join(FILTERED_FOLDER, "surviving_files.csv")
+    write_manifest(surviving_files, surviving_path)
+    print(f"Manifest saved to {surviving_path}")
+
+    removed_path = os.path.join(FILTERED_FOLDER, "removed_files.csv")
+    write_manifest(removed_files, removed_path)
+    print(f"Removed manifest saved to {removed_path}")
 
 
 if __name__ == "__main__":

@@ -15,6 +15,7 @@ THRESHOLD = 4       # which step3_filtered/{THRESHOLD}/ folder to load (may be a
 WIN_RR    = 4.0     # reward:risk; a win pays WIN_RR * risk_amount
 RISK_PCT  = 0.0312  # risk per trade as a fraction of current equity
 FEE_PCT   = 0.00312 # fee per trade as a fraction of current equity
+TRADE_SIDE = "both"  # "buy" | "sell" | "both" — which side(s) to backtest
 
 
 def load_survived_trades(threshold=THRESHOLD):
@@ -101,6 +102,7 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
         "sell_wins": 0,
         "max_equity": initial_capital,
         "max_drawdown": 0.0,
+        "max_drawdown_amount": 0.0,
     }
 
     # Yearly tracking
@@ -129,9 +131,14 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
         if account_balance > stats["max_equity"]:
             stats["max_equity"] = account_balance
 
-        drawdown = (stats["max_equity"] - account_balance) / stats["max_equity"]
+        drawdown_amount = stats["max_equity"] - account_balance
+        drawdown = drawdown_amount / stats["max_equity"]
+        # Worst % drawdown and worst $ drawdown are tracked independently: with
+        # percentage-based sizing they occur at different points on the curve.
         if drawdown > stats["max_drawdown"]:
             stats["max_drawdown"] = drawdown
+        if drawdown_amount > stats["max_drawdown_amount"]:
+            stats["max_drawdown_amount"] = drawdown_amount
 
         # Extract year
         year = row["date"][:4]
@@ -169,6 +176,18 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
     return pd.DataFrame(equity_curve), stats
 
 
+def filter_by_side(trades_df, side=TRADE_SIDE):
+    """Keep only Buy, only Sell, or both. side in {"buy","sell","both"} (case-insensitive)."""
+    s = str(side).strip().lower()
+    if s == "buy":
+        return trades_df[trades_df["type"] == "Buy"].reset_index(drop=True)
+    if s == "sell":
+        return trades_df[trades_df["type"] == "Sell"].reset_index(drop=True)
+    if s == "both":
+        return trades_df
+    raise ValueError(f"TRADE_SIDE must be 'buy', 'sell', or 'both', got {side!r}")
+
+
 def main():
     print("=" * 60)
     print(f"TEST BOT - Backtest on Survived Trades (Threshold = {THRESHOLD})")
@@ -180,6 +199,14 @@ def main():
 
     if trades_df.empty:
         print("No survived trades found. Exiting.")
+        return
+
+    # Restrict to the selected side (Buy / Sell / both)
+    trades_df = filter_by_side(trades_df, TRADE_SIDE)
+    print(f"  Side: {TRADE_SIDE}")
+
+    if trades_df.empty:
+        print(f"No '{TRADE_SIDE}' trades found for this threshold. Exiting.")
         return
 
     print(f"  Total survived trades: {len(trades_df)}")
@@ -218,6 +245,7 @@ def main():
     print(f"  Total PnL        : ${stats['total_pnl']:.2f}")
     print(f"  Final balance    : ${stats['final_balance']:.2f}")
     print(f"  Max drawdown     : {stats['max_drawdown']*100:.2f}%")
+    print(f"  Max drawdown ($) : ${stats['max_drawdown_amount']:,.2f}")
     print(f"  Max equity       : ${stats['max_equity']:.2f}")
 
     durations = result["duration_hours"].dropna()
