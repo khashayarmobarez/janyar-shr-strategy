@@ -9,6 +9,7 @@ import pandas as pd
 import os
 from config import FILTERED_FOLDER
 from thresholds import fmt_threshold
+from step6_drawdown import get_trade_values, get_loss_event_indices, compute_lowest_drawdown
 
 # --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
 THRESHOLD = 4       # which step3_filtered/{THRESHOLD}/ folder to load (may be a decimal, e.g. 1.3)
@@ -101,9 +102,12 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
         "buy_wins": 0,
         "sell_wins": 0,
         "max_equity": initial_capital,
-        "max_drawdown": 0.0,
-        "max_drawdown_amount": 0.0,
+        "num_drawdowns": 0,
+        "r_drawdown": 0.0,   # worst cumulative R-multiple drawdown (step 6's formula)
     }
+
+    # Tracks whether equity is currently below its running peak (one drawdown episode)
+    in_drawdown = False
 
     # Yearly tracking
     yearly_data = {}
@@ -132,13 +136,15 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
             stats["max_equity"] = account_balance
 
         drawdown_amount = stats["max_equity"] - account_balance
-        drawdown = drawdown_amount / stats["max_equity"]
-        # Worst % drawdown and worst $ drawdown are tracked independently: with
-        # percentage-based sizing they occur at different points on the curve.
-        if drawdown > stats["max_drawdown"]:
-            stats["max_drawdown"] = drawdown
-        if drawdown_amount > stats["max_drawdown_amount"]:
-            stats["max_drawdown_amount"] = drawdown_amount
+        drawdown = drawdown_amount / stats["max_equity"]  # per-trade %, used in the CSV only
+
+        # Count distinct drawdown episodes (peak -> underwater -> new high)
+        if drawdown_amount > 0:
+            if not in_drawdown:
+                stats["num_drawdowns"] += 1
+                in_drawdown = True
+        else:
+            in_drawdown = False
 
         # Extract year
         year = row["date"][:4]
@@ -172,6 +178,12 @@ def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FE
     # Add final balance to stats
     stats["final_balance"] = account_balance
     stats["yearly_data"] = yearly_data
+
+    # Worst cumulative R-multiple drawdown, using step 6's exact formula
+    # (each win = +THRESHOLD R, each loss = -1 R; risk-size independent).
+    r_values = get_trade_values(trades_df, THRESHOLD)
+    r_loss_indices = get_loss_event_indices(trades_df)
+    stats["r_drawdown"], _ = compute_lowest_drawdown(r_values, r_loss_indices)
 
     return pd.DataFrame(equity_curve), stats
 
@@ -244,8 +256,8 @@ def main():
     print(f"  - Sell wins      : {stats['sell_wins']}")
     print(f"  Total PnL        : ${stats['total_pnl']:.2f}")
     print(f"  Final balance    : ${stats['final_balance']:.2f}")
-    print(f"  Max drawdown     : {stats['max_drawdown']*100:.2f}%")
-    print(f"  Max drawdown ($) : ${stats['max_drawdown_amount']:,.2f}")
+    print(f"  Max drawdown (R) : {stats['r_drawdown']:.2f}R")
+    print(f"  Drawdowns (count): {stats['num_drawdowns']}")
     print(f"  Max equity       : ${stats['max_equity']:.2f}")
 
     durations = result["duration_hours"].dropna()
