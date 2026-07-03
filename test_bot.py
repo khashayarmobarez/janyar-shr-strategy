@@ -1,4 +1,5 @@
 # test_bot.py
+# final strategy
 # Backtest bot on survived trades from step3_filtered/{THRESHOLD}/ (pre-computed;
 # the candle timeframe follows whatever step1-3 produced via config.CANDLE_TIMEFRAME).
 # Loads ALL surviving distance files for THRESHOLD; configurable RR / risk / fee.
