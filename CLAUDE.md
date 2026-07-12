@@ -100,16 +100,18 @@ All test bots load distance buckets from `step3_filtered/{threshold}/`, simulate
 | `test_bot_risk_2.5.py`         | pre-computed | 1            | 1:1          | fixed $500   | —            | —                                 |
 | `1h_test_bot.py`               | 1H live-sim  | 4            | 1:4          | 0.5%         | 0.05%        | `1h_test_bot_results.csv`         |
 | `15m_test_bot.py`              | 15M live-sim | 823          | 1:823        | 0.002%       | 0.0002%      | `15m_test_bot_results.csv`        |
+| `1d_test_bot.py`               | 1D live-sim  | 4            | 1:4          | 0.5%         | 0.05%        | `1d_test_bot_results.csv`         |
 | `production_ready_test_bot.py` | pre-computed | configurable | configurable | configurable | configurable | `production_backtest_results.csv` |
 
 **pre-computed** bots load trades directly from the filtered CSVs.
-**live-sim** bots (`1h_test_bot.py`, `15m_test_bot.py`) re-read raw 1M data, resample, and re-simulate every trade — giving an independent verification pass.
+**live-sim** bots (`1h_test_bot.py`, `15m_test_bot.py`, `1d_test_bot.py`) re-simulate every trade on 1M data — giving an independent verification pass. `1h_test_bot.py` and `15m_test_bot.py` resample the raw 1M data into signal candles; `1d_test_bot.py` loads its daily signal candles directly from `XAU_1d_data.csv` (constants `THRESHOLD`, `WIN_RR`, `RISK_PCT`, `FEE_PCT` at the top of the file).
 
 ### Running a test bot
 
 ```
 python 15m_test_bot.py
 python 1h_test_bot.py
+python 1d_test_bot.py
 python production_ready_test_bot.py --help
 ```
 
@@ -123,6 +125,7 @@ project program/
 ├── XAU_15m_data.csv             # Pre-resampled 15M data
 ├── XAU_1h_data.csv              # Pre-resampled 1H data
 ├── XAU_4h_data.csv              # Pre-resampled 4H data
+├── XAU_1d_data.csv              # Pre-resampled 1D data (used by 1d_test_bot.py)
 ├── trades.csv                   # Step 1 output
 ├── step1_extract.py
 ├── step2_grouped.py
@@ -136,6 +139,7 @@ project program/
 ├── test_bot_risk_2.5.py
 ├── 1h_test_bot.py
 ├── 15m_test_bot.py
+├── 1d_test_bot.py
 ├── production_ready_test_bot.py
 ├── step2_grouped/               # Buy/Sell distance CSVs (all trades)
 ├── step3_filtered/              # Threshold subfolders (e.g. /2/, /823/)
