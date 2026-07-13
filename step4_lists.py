@@ -56,7 +56,7 @@ def main():
 
         out_path = os.path.join(LISTS_FOLDER, f"list_rr_{fmt_threshold(T)}.csv")
         merged.to_csv(out_path, index=False)
-        print(f"Threshold {fmt_threshold(T)}: {len(merged)} trades → {out_path}")
+        print(f"Threshold {fmt_threshold(T)}: {len(merged)} trades -> {out_path}")
 
     print(f"\nStep 4 complete. Lists saved to {LISTS_FOLDER}.")
 

@@ -1,7 +1,7 @@
 # 1d_test_bot.py
 # Backtest bot using 1D candle signals filtered by step3_filtered/{THRESHOLD} distance buckets.
-# Daily candles are loaded directly from XAU_1d_data.csv (no resampling of the 1M file);
-# 1-minute data is still used for breakout detection and trade simulation.
+# Runs entirely on the daily candle file (CANDLE_DATA_FILE, see config.py) — breakout
+# detection and trade simulation use the same candle-granularity logic as step1_extract.py.
 # Risk: 0.5% | Commission: 0.05% | R/R: 1:4 (win if rr >= 4)
 # Output: 1d_test_bot_results.csv + console summary
 
@@ -11,11 +11,9 @@ import os
 import numpy as np
 import pandas as pd
 
-from config import FILTERED_FOLDER, RAW_DATA_FILE, DATA_START
-from box_strategy import box_signal, find_breakout
+from config import FILTERED_FOLDER, CANDLE_DATA_FILE, DATA_START
+from box_strategy import box_signal, find_breakout_candle, simulate_trade_candles
 from thresholds import fmt_threshold
-
-DAILY_DATA_FILE = "XAU_1d_data.csv"
 
 THRESHOLD = 4
 WIN_RR    = 4.0
@@ -82,60 +80,23 @@ def load_ohlcv_csv(filepath):
 
 
 # ---------------------------------------------------------------
-# TRADE SIMULATION (same logic as step1_extract.py)
+# TRADE GENERATION (same candle-level logic as step1_extract.py)
 # ---------------------------------------------------------------
 
-def simulate_trade(direction, entry, stop_loss, distance, minute_times, minute_high, minute_low, start_dt):
-    start_pos = int(np.searchsorted(minute_times, start_dt.to_datetime64(), side="left"))
-
-    if start_pos >= len(minute_times):
-        return 0.0, "SL"
-
-    if direction == "Buy":
-        sub_high = minute_high[start_pos:]
-        sub_low  = minute_low[start_pos:]
-        normal_hits   = np.flatnonzero(sub_low <= stop_loss)
-        favorable_arr = sub_high - entry
-    else:
-        sub_high = minute_high[start_pos:]
-        sub_low  = minute_low[start_pos:]
-        normal_hits   = np.flatnonzero(sub_high >= stop_loss)
-        favorable_arr = entry - sub_low
-
-    if normal_hits.size:
-        exit_idx = int(normal_hits[0])
-        max_favorable = float(np.max(favorable_arr[:exit_idx])) if exit_idx > 0 else 0.0
-        if max_favorable < 0:
-            max_favorable = 0.0
-        rr = max_favorable / distance
-        return round(max_favorable, 6), round(rr, 1) if rr >= 1.0 else "SL"
-
-    max_favorable = float(np.max(favorable_arr)) if len(favorable_arr) else 0.0
-    if max_favorable < 0:
-        max_favorable = 0.0
-    rr = max_favorable / distance if distance > 0 else 0.0
-    return round(max_favorable, 6), round(rr, 1) if rr >= 1.0 else "SL"
-
-
-# ---------------------------------------------------------------
-# TRADE GENERATION
-# ---------------------------------------------------------------
-
-def generate_trades(candles_1d, minute_times, minute_high, minute_low, valid_buckets):
+def generate_trades(candles, valid_buckets):
     trades = []
-    total = len(candles_1d)
+    total = len(candles)
 
     # Box = candles (i-2, i-1, i); breakout candle = i+1. See box_strategy.py.
-    c_times = candles_1d.index.values
-    c_open  = candles_1d["open"].to_numpy()
-    c_high  = candles_1d["high"].to_numpy()
-    c_low   = candles_1d["low"].to_numpy()
-    c_close = candles_1d["close"].to_numpy()
-    tf = pd.Timedelta(days=1)
+    c_times = candles.index
+    c_open  = candles["open"].to_numpy()
+    c_high  = candles["high"].to_numpy()
+    c_low   = candles["low"].to_numpy()
+    c_close = candles["close"].to_numpy()
 
     for i in range(2, total - 1):
         if i % 1000 == 0:
-            print(f"  [{i:>7} / {total}]  {pd.Timestamp(c_times[i]).date()}")
+            print(f"  [{i:>7} / {total}]  {c_times[i].date()}")
 
         c1 = (c_open[i - 2], c_high[i - 2], c_low[i - 2], c_close[i - 2])
         c2 = (c_open[i - 1], c_high[i - 1], c_low[i - 1], c_close[i - 1])
@@ -145,16 +106,13 @@ def generate_trades(candles_1d, minute_times, minute_high, minute_low, valid_buc
         if not valid:
             continue
 
-        win_start = pd.Timestamp(c_times[i + 1])
-        win_end   = win_start + tf
-        breakout = find_breakout(
-            box_top, box_bottom, win_start, win_end,
-            minute_times, minute_high, minute_low,
+        breakout = find_breakout_candle(
+            box_top, box_bottom, c_open[i + 1], c_high[i + 1], c_low[i + 1],
         )
         if breakout is None:
             continue
 
-        direction, entry, stop_loss, trigger_dt = breakout
+        direction, entry, stop_loss = breakout
         distance = abs(entry - stop_loss)
         if distance == 0:
             continue
@@ -163,10 +121,11 @@ def generate_trades(candles_1d, minute_times, minute_high, minute_low, valid_buc
         if (direction, bucket) not in valid_buckets:
             continue
 
-        max_profit, reward_risk = simulate_trade(
+        max_profit, reward_risk, _close_idx = simulate_trade_candles(
             direction, entry, stop_loss, distance,
-            minute_times, minute_high, minute_low, trigger_dt,
+            c_high, c_low, i + 1,
         )
+        trigger_dt = c_times[i + 1]
 
         trades.append({
             "date"        : trigger_dt.strftime("%Y-%m-%d"),
@@ -304,26 +263,16 @@ def main():
     print(f"  Buy  buckets : {buy_buckets}")
     print(f"  Sell buckets : {sell_buckets}")
 
-    # Load 1D candles directly (no resampling needed)
-    print(f"\nLoading daily candles from '{DAILY_DATA_FILE}'...")
-    candles_1d = load_ohlcv_csv(DAILY_DATA_FILE)
-    print(f"  1D candles : {len(candles_1d):,}")
-    print(f"  From       : {candles_1d.index[0]}")
-    print(f"  To         : {candles_1d.index[-1]}")
-
-    # Load 1m data (breakout detection + trade simulation)
-    print(f"\nLoading 1-minute data from '{RAW_DATA_FILE}'...")
-    minute_df = load_ohlcv_csv(RAW_DATA_FILE)
-    minute_times = minute_df.index.values
-    minute_high  = minute_df["high"].to_numpy()
-    minute_low   = minute_df["low"].to_numpy()
-    print(f"  Loaded   : {len(minute_df):,} 1-minute candles")
-    print(f"  From     : {minute_df.index[0]}")
-    print(f"  To       : {minute_df.index[-1]}")
+    # Load 1D candles
+    print(f"\nLoading daily candles from '{CANDLE_DATA_FILE}'...")
+    candles = load_ohlcv_csv(CANDLE_DATA_FILE)
+    print(f"  1D candles : {len(candles):,}")
+    print(f"  From       : {candles.index[0]}")
+    print(f"  To         : {candles.index[-1]}")
 
     # Generate and filter trades
     print("\nGenerating and filtering 1D trades...")
-    trades_df = generate_trades(candles_1d, minute_times, minute_high, minute_low, valid_buckets)
+    trades_df = generate_trades(candles, valid_buckets)
     print(f"\n  Total filtered trades : {len(trades_df):,}")
     if trades_df.empty:
         print("No trades after filtering. Exiting.")

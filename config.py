@@ -8,12 +8,16 @@ MIN_RR          = 1.0
 
 
 PENALTY_PER_N_TRADES        = 10
-NUM_WORKERS                 = 3   # parallel CPU cores for step1 simulation; change to 4 or 5 to use more
+NUM_WORKERS                 = 3   # parallel CPU cores (legacy; step1 now runs single-threaded on candle data)
 
-# Candle timeframe the pipeline resamples 1M data to, and the size of the
-# breakout-detection window. A pandas offset alias accepted by both
-# df.resample(...) and pd.Timedelta(...). Set "15min" to restore the old behavior.
+# Candle timeframe of the strategy. A pandas offset alias accepted by both
+# df.resample(...) and pd.Timedelta(...).
 CANDLE_TIMEFRAME    = "1D"
+
+# Pre-resampled candle data the pipeline runs on. Must match CANDLE_TIMEFRAME
+# (e.g. XAU_4h_data.csv for "4h"). step1 and 1d_test_bot.py read this file
+# directly; the 1M file is only needed by the 1h/15m live-sim bots.
+CANDLE_DATA_FILE    = "XAU_1d_data.csv"
 
 # Earliest 1M bar to keep. Bars before this timestamp are dropped during
 # extraction (step1) and in the live-sim test bots. Raw data begins 2004.06.11,

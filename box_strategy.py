@@ -68,6 +68,88 @@ def box_signal(c1, c2, c3):
     return True, box_top, box_bottom
 
 
+def find_breakout_candle(box_top, box_bottom, c_open, c_high, c_low):
+    """
+    Candle-granularity breakout check for the single candle following the box,
+    used when no finer (1-minute) data is available.
+
+    Returns (direction, entry, stop_loss) or None when no entry triggers.
+    If the candle pierces both levels, the open decides: an open gapped beyond
+    a level means that side triggered first; an open inside the box leaves the
+    order unknown -> ambiguous, skipped (mirrors the 1M same-bar rule).
+    """
+    pierced_top    = c_high >= box_top
+    pierced_bottom = c_low <= box_bottom
+
+    if not pierced_top and not pierced_bottom:
+        return None
+    if pierced_top and pierced_bottom:
+        if c_open >= box_top:
+            take_buy = True
+        elif c_open <= box_bottom:
+            take_buy = False
+        else:
+            return None  # both sides pierced, order unknown -> ambiguous
+    else:
+        take_buy = pierced_top
+
+    if take_buy:
+        return "Buy", box_top, box_bottom - SL_OFFSET
+    return "Sell", box_bottom, box_top + SL_OFFSET
+
+
+def simulate_trade_candles(direction, entry, stop_loss, distance,
+                           highs, lows, start_idx, min_rr=1.0):
+    """
+    Candle-granularity version of the trade simulation: scan candles forward
+    from the breakout candle (start_idx) and record the maximum favorable move
+    before the stop loss is hit. The SL-hit candle's own favorable extreme is
+    excluded, since the intra-candle order is unknown (same convention as the
+    1M simulation, which excludes the SL-hit bar).
+
+    Returns (max_profit, reward_risk_or_"SL", close_idx). close_idx is the
+    absolute index of the candle that closed the trade: the TP-hit candle when
+    the target was reached on an earlier candle than the SL, otherwise the
+    SL candle (or the last candle when the SL is never hit).
+    """
+    if start_idx >= len(highs):
+        return 0.0, "SL", None
+
+    sub_high = highs[start_idx:]
+    sub_low  = lows[start_idx:]
+    if direction == "Buy":
+        normal_hits   = np.flatnonzero(sub_low <= stop_loss)
+        favorable_arr = sub_high - entry
+    else:
+        normal_hits   = np.flatnonzero(sub_high >= stop_loss)
+        favorable_arr = entry - sub_low
+
+    tp_hits = np.flatnonzero(favorable_arr >= min_rr * distance)
+
+    if normal_hits.size:
+        exit_idx = int(normal_hits[0])
+        max_favorable = float(np.max(favorable_arr[:exit_idx])) if exit_idx > 0 else 0.0
+        if max_favorable < 0:
+            max_favorable = 0.0
+        rr = max_favorable / distance
+        if tp_hits.size and int(tp_hits[0]) < exit_idx:
+            close_idx = start_idx + int(tp_hits[0])
+        else:
+            close_idx = start_idx + exit_idx
+        return round(max_favorable, 6), round(rr, 1) if rr >= min_rr else "SL", close_idx
+
+    # End of data without SL hit
+    max_favorable = float(np.max(favorable_arr)) if len(favorable_arr) else 0.0
+    if max_favorable < 0:
+        max_favorable = 0.0
+    rr = max_favorable / distance if distance > 0 else 0.0
+    if tp_hits.size:
+        close_idx = start_idx + int(tp_hits[0])
+    else:
+        close_idx = start_idx + len(favorable_arr) - 1
+    return round(max_favorable, 6), round(rr, 1) if rr >= min_rr else "SL", close_idx
+
+
 def find_breakout(box_top, box_bottom, win_start, win_end,
                   minute_times, minute_high, minute_low):
     """
