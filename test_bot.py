@@ -82,7 +82,7 @@ def calculate_trade_pnl(row, account_balance, risk_pct=RISK_PCT, fee_pct=FEE_PCT
         return -(risk_amount + fee), risk_pct
 
 
-def run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FEE_PCT):
+def run_backtest(trades_df, initial_capital=15000, risk_pct=RISK_PCT, fee_pct=FEE_PCT):
     """
     Run the backtest simulation with percentage-based risk.
     """
@@ -228,13 +228,13 @@ def main():
 
     # Run backtest
     print("\nRunning backtest...")
-    print(f"  Initial capital: $10,000")
+    print(f"  Initial capital: $15,000")
     print(f"  Risk per trade: {RISK_PCT*100:.3g}% of equity")
     print(f"  Fee per trade: {FEE_PCT*100:.3g}% of equity")
     print(f"  Exit: 1:{WIN_RR:g} RR (TP = {WIN_RR:g}x SL distance) or stop loss")
     print()
 
-    result, stats = run_backtest(trades_df, initial_capital=10000, risk_pct=RISK_PCT, fee_pct=FEE_PCT)
+    result, stats = run_backtest(trades_df, initial_capital=15000, risk_pct=RISK_PCT, fee_pct=FEE_PCT)
 
     if result is None:
         return
