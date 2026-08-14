@@ -17,14 +17,14 @@ Install: `pip install -r requirements.txt`
 
 All shared constants live in `config.py` — change values there only:
 
-| Constant        | Default           | Description                                                        |
-| --------------- | ----------------- | ------------------------------------------------------------------ |
-| `SL_OFFSET`     | 0.3               | Pip offset added to low (Buy SL) or subtracted from high (Sell SL) |
-| `MIN_RR`        | 1.0               | Minimum reward/risk ratio for a trade to count as a win            |
-| `NUM_WORKERS`   | 3                 | Legacy; step 1 now runs single-threaded on candle data             |
-| `CANDLE_TIMEFRAME` | `1D`           | Candle timeframe of the strategy                                   |
+| Constant           | Default           | Description                                                                    |
+| ------------------ | ----------------- | ------------------------------------------------------------------------------ |
+| `SL_OFFSET`        | 0.3               | Pip offset added to low (Buy SL) or subtracted from high (Sell SL)             |
+| `MIN_RR`           | 1.0               | Minimum reward/risk ratio for a trade to count as a win                        |
+| `NUM_WORKERS`      | 3                 | Legacy; step 1 now runs single-threaded on candle data                         |
+| `CANDLE_TIMEFRAME` | `1D`              | Candle timeframe of the strategy                                               |
 | `CANDLE_DATA_FILE` | `XAU_1d_data.csv` | Pre-resampled candle data the pipeline runs on (must match `CANDLE_TIMEFRAME`) |
-| `RAW_DATA_FILE` | `XAU_1m_data.csv` | 1-minute data (only used by the 1H/15M live-sim bots)              |
+| `RAW_DATA_FILE`    | `XAU_1m_data.csv` | 1-minute data (only used by the 1H/15M live-sim bots)                          |
 
 ## 7-Step Pipeline
 
@@ -178,3 +178,5 @@ Detection logic lives in `box_strategy.py` (shared by `step1_extract.py`, `1d_te
 - The test bot's `step3_filtered/{THRESHOLD}/` folder must be populated (steps 1–3) before running it
 - Step 1 runs single-threaded on the candle data; `NUM_WORKERS` is legacy and unused
 - The matrix number in step 7 is the primary selection criterion — higher is better
+
+<!-- project finished(checking the contribution of github) -->
