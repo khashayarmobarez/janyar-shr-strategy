@@ -1,6 +1,7 @@
 import pandas as pd
 import math
 import os
+import shutil
 from config import GROUPED_FOLDER, FILTERED_FOLDER, MIN_RR
 from thresholds import generate_thresholds, fmt_threshold
 
@@ -64,7 +65,9 @@ def main():
 
     print(f"Thresholds: {thresholds}")
 
-    # Ensure filtered folder exists
+    # Rebuild output folder so stale thresholds from a previous dataset are dropped
+    if os.path.exists(FILTERED_FOLDER):
+        shutil.rmtree(FILTERED_FOLDER)
     os.makedirs(FILTERED_FOLDER, exist_ok=True)
 
     # Collect surviving and removed files per threshold

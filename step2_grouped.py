@@ -1,6 +1,7 @@
 import pandas as pd
 import math
 import os
+import shutil
 from config import GROUPED_FOLDER, RAW_TRADES_FILE
 
 
@@ -22,7 +23,9 @@ def main():
     # Compute integer distance bucket
     df["distance_bucket"] = df["distance"].apply(math.floor)
 
-    # Ensure output folder exists
+    # Rebuild output folder so stale buckets from a previous dataset are dropped
+    if os.path.exists(GROUPED_FOLDER):
+        shutil.rmtree(GROUPED_FOLDER)
     os.makedirs(GROUPED_FOLDER, exist_ok=True)
 
     # Group by type and distance_bucket
