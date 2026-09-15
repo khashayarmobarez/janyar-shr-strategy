@@ -1,23 +1,60 @@
 # test_bot.py
-# final strategy
+# final strategy (runs on the configured candle timeframe — currently weekly "1W")
 # Backtest bot on survived trades from step3_filtered/{THRESHOLD}/ (pre-computed;
 # the candle timeframe follows whatever step1-3 produced via config.CANDLE_TIMEFRAME).
 # Loads ALL surviving distance files for THRESHOLD; configurable RR / risk / fee.
-# Starting capital: $10,000 | Exit at 1:WIN_RR RR or stop loss
+# If the configured THRESHOLD folder is missing (e.g. after switching to weekly),
+# the best finite threshold from step7_matrix_summary.csv is used automatically.
+# Starting capital: $15,000 | Exit at 1:WIN_RR RR or stop loss
 # Output: test_bot_results.csv + console summary
 
 import pandas as pd
 import os
-from config import FILTERED_FOLDER
+from config import FILTERED_FOLDER, MATRIX_FILE, CANDLE_TIMEFRAME
 from thresholds import fmt_threshold
 from step6_drawdown import get_trade_values, get_loss_event_indices, compute_lowest_drawdown
 
-# --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
-THRESHOLD = 5.1       # which step3_filtered/{THRESHOLD}/ folder to load (may be a decimal, e.g. 5.1.3)
-WIN_RR    = 5.1   # reward:risk; a win pays WIN_RR * risk_amo2.7
-RISK_PCT  = 0.0263  # risk per trade as a fraction of current equity 
-FEE_PCT   = 0.00263 # fee per trade as a fraction of current equity
+# --- Configurable parameters (tune after inspecting the step7 matrix) ---
+THRESHOLD = 3.8       # which step3_filtered/{THRESHOLD}/ folder to load (may be a decimal, e.g. 1.1.3)
+WIN_RR    = 3.8   # reward:risk; a win pays WIN_RR * risk_amo2.7
+RISK_PCT  = 0.25  # risk per trade as a fraction of current equity 
+FEE_PCT   = 0.025 # fee per trade as a fraction of current equity
 TRADE_SIDE = "both"  # "buy" | "sell" | "both" — which side(s) to backtest
+
+
+def _has_trades(threshold):
+    folder = os.path.join(FILTERED_FOLDER, fmt_threshold(threshold))
+    return os.path.isdir(folder) and any(
+        f.endswith(".csv") for f in os.listdir(folder)
+    )
+
+
+def pick_best_threshold():
+    """Best non-degenerate threshold from step7 (highest finite matrix_number)
+    whose step3_filtered folder actually exists. Returns None if unavailable."""
+    if not os.path.exists(MATRIX_FILE):
+        return None
+    m = pd.read_csv(MATRIX_FILE)
+    m["matrix_number"] = pd.to_numeric(m["matrix_number"], errors="coerce")
+    m = m.dropna(subset=["matrix_number"])
+    m = m[m["matrix_number"].apply(lambda v: v != float("inf") and v != float("-inf"))]
+    m = m.sort_values("matrix_number", ascending=False)
+    for T in m["rr_threshold"]:
+        if _has_trades(T):
+            return float(T)
+    return None
+
+
+def resolve_threshold():
+    """Use THRESHOLD when its folder exists, otherwise fall back to the best
+    step7 threshold. Returns None when no usable threshold can be found."""
+    if _has_trades(THRESHOLD):
+        return float(THRESHOLD)
+    picked = pick_best_threshold()
+    if picked is not None:
+        print(f"Threshold {fmt_threshold(THRESHOLD)} folder not found; "
+              f"using best from {MATRIX_FILE}: {fmt_threshold(picked)}")
+    return picked
 
 
 def load_survived_trades(threshold=THRESHOLD):
@@ -82,7 +119,8 @@ def calculate_trade_pnl(row, account_balance, risk_pct=RISK_PCT, fee_pct=FEE_PCT
         return -(risk_amount + fee), risk_pct
 
 
-def run_backtest(trades_df, initial_capital=15000, risk_pct=RISK_PCT, fee_pct=FEE_PCT):
+def run_backtest(trades_df, initial_capital=15000, risk_pct=RISK_PCT, fee_pct=FEE_PCT,
+                 threshold=THRESHOLD):
     """
     Run the backtest simulation with percentage-based risk.
     """
@@ -181,8 +219,8 @@ def run_backtest(trades_df, initial_capital=15000, risk_pct=RISK_PCT, fee_pct=FE
     stats["yearly_data"] = yearly_data
 
     # Worst cumulative R-multiple drawdown, using step 6's exact formula
-    # (each win = +THRESHOLD R, each loss = -1 R; risk-size independent).
-    r_values = get_trade_values(trades_df, THRESHOLD)
+    # (each win = +threshold R, each loss = -1 R; risk-size independent).
+    r_values = get_trade_values(trades_df, threshold)
     r_loss_indices = get_loss_event_indices(trades_df)
     stats["r_drawdown"], _ = compute_lowest_drawdown(r_values, r_loss_indices)
 
@@ -202,13 +240,19 @@ def filter_by_side(trades_df, side=TRADE_SIDE):
 
 
 def main():
+    threshold = resolve_threshold()
+    if threshold is None:
+        print(f"ERROR: no surviving threshold folders in {FILTERED_FOLDER}/. "
+              f"Run the pipeline (steps 1-7) first.")
+        return
+
     print("=" * 60)
-    print(f"TEST BOT - Backtest on Survived Trades (Threshold = {THRESHOLD})")
+    print(f"TEST BOT [{CANDLE_TIMEFRAME}] - Backtest on Survived Trades (Threshold = {fmt_threshold(threshold)})")
     print("=" * 60)
 
     # Load survived trades
-    print(f"\nLoading survived trades (threshold={THRESHOLD}, all files)...")
-    trades_df = load_survived_trades(threshold=THRESHOLD)
+    print(f"\nLoading survived trades (threshold={fmt_threshold(threshold)}, all files)...")
+    trades_df = load_survived_trades(threshold=threshold)
 
     if trades_df.empty:
         print("No survived trades found. Exiting.")
@@ -234,7 +278,8 @@ def main():
     print(f"  Exit: 1:{WIN_RR:g} RR (TP = {WIN_RR:g}x SL distance) or stop loss")
     print()
 
-    result, stats = run_backtest(trades_df, initial_capital=15000, risk_pct=RISK_PCT, fee_pct=FEE_PCT)
+    result, stats = run_backtest(trades_df, initial_capital=15000, risk_pct=RISK_PCT, fee_pct=FEE_PCT,
+                                 threshold=threshold)
 
     if result is None:
         return

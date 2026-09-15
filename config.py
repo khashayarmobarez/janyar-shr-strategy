@@ -12,19 +12,19 @@ NUM_WORKERS                 = 3   # parallel CPU cores (legacy; step1 now runs s
 
 # Candle timeframe of the strategy. A pandas offset alias accepted by both
 # df.resample(...) and pd.Timedelta(...).
-CANDLE_TIMEFRAME    = "1D"
+CANDLE_TIMEFRAME    = "1W"
 
-# Daily candle data the pipeline runs on. XAUUSD1440.csv is an MT4-style daily
-# export: tab-separated, no header, "%Y-%m-%d %H:%M" timestamps, spanning
-# 2009-12-08 -> present (Mon-Fri plus Sunday bars). step1 and 1d_test_bot.py
-# read this file directly via data_loader.load_ohlcv_csv; the 1M file is only
-# needed by the 1h/15m live-sim bots.
-CANDLE_DATA_FILE    = "XAUUSD1440.csv"
+# Pre-resampled candle data the pipeline runs on. Must match CANDLE_TIMEFRAME.
+# Regenerate from the daily base with `python resample_data.py` (defaults to
+# 1W -> XAU_1w_data.csv, Sunday-to-Saturday bins). step1 and 1d_test_bot.py read
+# this file directly via data_loader.load_ohlcv_csv; the 1M file is only needed
+# by the 1h/15m live-sim bots.
+CANDLE_DATA_FILE    = "XAU_1w_data.csv"
 
 # Earliest bar to keep. Bars before this timestamp are dropped during
-# extraction (step1) and in the test bots. CANDLE_DATA_FILE begins 2009-12-08,
-# so "2009-12-08 00:00" keeps everything available.
-DATA_START          = "2009-12-08 00:00"
+# extraction (step1) and in the test bots. XAU_1w_data.csv begins 2009-12-06,
+# so "2009-12-06 00:00" keeps everything available.
+DATA_START          = "2009-12-06 00:00"
 
 RAW_DATA_FILE       = "XAU_1m_data.csv"
 RAW_TRADES_FILE     = "trades.csv"

@@ -55,7 +55,7 @@ def _parse_datetime(series):
     return pd.to_datetime(series, format="mixed")
 
 
-def load_ohlcv_csv(filepath):
+def load_ohlcv_csv(filepath, apply_start=True):
     sep, skiprows = _sniff_reader(filepath)
 
     df = pd.read_csv(
@@ -75,6 +75,24 @@ def load_ohlcv_csv(filepath):
     df = df.dropna(subset=["open", "high", "low", "close"])
 
     # Remove all data before DATA_START (config.py)
-    df = df[df.index >= DATA_START]
+    if apply_start:
+        df = df[df.index >= DATA_START]
 
     return df
+
+
+def resample_ohlcv(df, timeframe):
+    """Resample an OHLCV frame to a coarser timeframe (e.g. "1W", "4h").
+
+    Uses the same label/closed convention as the live-sim bots: left-labelled,
+    left-closed bins. For "1W" this yields Sunday-to-Saturday trading weeks
+    (first-open/highest-high/lowest-low/last-close).
+    """
+    ohlcv = df.resample(timeframe, label="left", closed="left").agg(
+        open=("open", "first"),
+        high=("high", "max"),
+        low=("low", "min"),
+        close=("close", "last"),
+        volume=("volume", "sum"),
+    )
+    return ohlcv.dropna(subset=["open", "close"])
