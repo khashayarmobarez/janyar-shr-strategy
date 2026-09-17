@@ -2,7 +2,7 @@
 
 ## Overview
 
-Gold (XAU) trading strategy backtesting system. Reads pre-resampled `CANDLE_TIMEFRAME` candle data (`CANDLE_DATA_FILE`, currently daily), detects 3-candle box-breakout signals, simulates each triggered trade at candle granularity, then scores and filters distance buckets by reward/risk ratio. Test bots run equity-curve backtests on the surviving filtered trades. The raw 1-minute file is only needed by the 1H/15M live-sim bots.
+Gold (XAU) trading strategy backtesting system. Reads daily candle data (`CANDLE_DATA_FILE` = `XAUUSD1440.csv`, an MT4-style export) directly via the shared `data_loader.py`, detects 3-candle box-breakout signals, simulates each triggered trade at candle granularity, then scores and filters distance buckets by reward/risk ratio. Test bots run equity-curve backtests on the surviving filtered trades. The raw 1-minute file is only needed by the 1H/15M live-sim bots. See `handoff.md` for the current state and run book.
 
 ## Dependencies
 
@@ -23,7 +23,8 @@ All shared constants live in `config.py` — change values there only:
 | `MIN_RR`           | 1.0               | Minimum reward/risk ratio for a trade to count as a win                        |
 | `NUM_WORKERS`      | 3                 | Legacy; step 1 now runs single-threaded on candle data                         |
 | `CANDLE_TIMEFRAME` | `1D`              | Candle timeframe of the strategy                                               |
-| `CANDLE_DATA_FILE` | `XAU_1d_data.csv` | Pre-resampled candle data the pipeline runs on (must match `CANDLE_TIMEFRAME`) |
+| `CANDLE_DATA_FILE` | `XAUUSD1440.csv`  | Daily candle data (MT4 export) loaded directly; must match `CANDLE_TIMEFRAME`  |
+| `DATA_START`       | `2009-12-08 00:00`| Earliest bar kept (matches the start of `CANDLE_DATA_FILE`)                    |
 | `RAW_DATA_FILE`    | `XAU_1m_data.csv` | 1-minute data (only used by the 1H/15M live-sim bots)                          |
 
 ## 7-Step Pipeline
@@ -36,7 +37,7 @@ Run steps in order. Each step depends on the previous one's output.
 python step1_extract.py
 ```
 
-Loads `CANDLE_DATA_FILE` (daily candles) directly, detects 3-candle box breakouts, simulates each triggered trade forward on the same candles, writes all results to `trades.csv`. Runs in seconds — no 1-minute data, resampling, or multiprocessing involved.
+Loads `CANDLE_DATA_FILE` (daily candles) directly, detects 3-candle box breakouts, simulates each triggered trade forward on the same candles, writes all results to `trades.csv`. Runs in seconds — no 1-minute data, resampling, or multiprocessing involved. The loader (`data_loader.py`) auto-detects separator, header, and date format, so both the MT4-style export and the legacy `;`-separated files load.
 
 Output columns: `date, time, day_of_week, type, entry, stop_loss, distance, max_profit, reward_risk, close_time`
 
@@ -46,7 +47,7 @@ Output columns: `date, time, day_of_week, type, entry, stop_loss, distance, max_
 python step2_grouped.py
 ```
 
-Reads `trades.csv`, groups by trade type (Buy/Sell) and integer distance bucket, writes `step2_grouped/Buy_distance_N.csv` and `Sell_distance_N.csv` for each bucket.
+Reads `trades.csv`, groups by trade type (Buy/Sell) and integer distance bucket, writes `step2_grouped/Buy_distance_N.csv` and `Sell_distance_N.csv` for each bucket. `step2_grouped/` is wiped and rebuilt each run, so switching datasets/timeframes leaves no stale buckets behind.
 
 ### Step 3 — Filter by R/R threshold
 
@@ -54,7 +55,7 @@ Reads `trades.csv`, groups by trade type (Buy/Sell) and integer distance bucket,
 python step3_filtered.py
 ```
 
-For every R/R threshold present in the data, scores each distance-bucket file and keeps only files with `score > 0`. Writes survivors to `step3_filtered/{threshold}/`. Creates `step3_filtered/surviving_files.csv` manifest.
+For every R/R threshold present in the data, scores each distance-bucket file and keeps only files with `score > 0`. Writes survivors to `step3_filtered/{threshold}/` (folder rebuilt from scratch each run). Creates `step3_filtered/surviving_files.csv` manifest, sorted by threshold ascending and then by direction + numeric distance (e.g. `Buy_distance_9` before `Buy_distance_111`).
 
 Score formula: `(wins × threshold) - below_threshold_trades - SL_trades - floor(total/10)`
 
@@ -64,7 +65,7 @@ Score formula: `(wins × threshold) - below_threshold_trades - SL_trades - floor
 python step4_lists.py
 ```
 
-Merges all surviving files per threshold into a single chronologically sorted CSV. Output: `step4_lists/list_rr_{T}.csv` for each threshold T.
+Merges all surviving files per threshold into a single chronologically sorted CSV. Output: `step4_lists/list_rr_{T}.csv` for each threshold T. `step4_lists/` is wiped and rebuilt each run.
 
 ### Step 5 — Re-score lists
 
@@ -96,12 +97,12 @@ All test bots load distance buckets from `step3_filtered/{threshold}/`, simulate
 
 | File                           | Candle       | Threshold    | R/R          | Risk         | Fee          | Output                            |
 | ------------------------------ | ------------ | ------------ | ------------ | ------------ | ------------ | --------------------------------- |
-| `test_bot.py`                  | pre-computed | configurable | configurable | configurable | configurable | `test_bot_results.csv`            |
+| `test_bot.py`                  | pre-computed | 5.1 (tuned)  | 1:5.1        | 2.63%        | 0.263%       | `test_bot_results.csv`            |
 | `test_bot_1_25.py`             | pre-computed | 25           | 1:25         | 0.04%        | 0.004%       | —                                 |
 | `test_bot_risk_2.5.py`         | pre-computed | 1            | 1:1          | fixed $500   | —            | —                                 |
 | `1h_test_bot.py`               | 1H live-sim  | 4            | 1:4          | 0.5%         | 0.05%        | `1h_test_bot_results.csv`         |
 | `15m_test_bot.py`              | 15M live-sim | 823          | 1:823        | 0.002%       | 0.0002%      | `15m_test_bot_results.csv`        |
-| `1d_test_bot.py`               | 1D daily-sim | 4            | 1:4          | 0.5%         | 0.05%        | `1d_test_bot_results.csv`         |
+| `1d_test_bot.py`               | candle-sim   | 4            | 1:4          | 0.5%         | 0.05%        | `1d_test_bot_results.csv`         |
 | `production_ready_test_bot.py` | pre-computed | configurable | configurable | configurable | configurable | `production_backtest_results.csv` |
 
 **pre-computed** bots load trades directly from the filtered CSVs.
@@ -123,11 +124,14 @@ python production_ready_test_bot.py --help
 project program/
 ├── config.py                    # All shared constants
 ├── requirements.txt
-├── XAU_1m_data.csv              # Raw input (~348 MB)
-├── XAU_15m_data.csv             # Pre-resampled 15M data
-├── XAU_1h_data.csv              # Pre-resampled 1H data
-├── XAU_4h_data.csv              # Pre-resampled 4H data
-├── XAU_1d_data.csv              # Pre-resampled 1D data (used by 1d_test_bot.py)
+├── handoff.md                   # Handoff notes / current state and run book
+├── XAUUSD1440.csv               # Active daily candle input (MT4-style export)
+├── XAU_1m_data.csv              # Raw 1-minute input (~348 MB; 1H/15M bots only)
+├── XAU_15m_data.csv             # Pre-resampled 15M data (legacy)
+├── XAU_1h_data.csv              # Pre-resampled 1H data (legacy)
+├── XAU_4h_data.csv              # Pre-resampled 4H data (legacy)
+├── XAU_1d_data.csv              # Pre-resampled 1D data (legacy)
+├── data_loader.py               # Auto-detecting OHLCV loader (+ resample helper)
 ├── trades.csv                   # Step 1 output
 ├── step1_extract.py
 ├── step2_grouped.py
@@ -174,9 +178,11 @@ Detection logic lives in `box_strategy.py` (shared by `step1_extract.py`, `1d_te
 
 ## Key Notes
 
-- Bars before `DATA_START` (config.py, currently `2004-01-01`) are dropped
+- Bars before `DATA_START` (config.py, currently `2009-12-08 00:00`) are dropped
 - The test bot's `step3_filtered/{THRESHOLD}/` folder must be populated (steps 1–3) before running it
 - Step 1 runs single-threaded on the candle data; `NUM_WORKERS` is legacy and unused
-- The matrix number in step 7 is the primary selection criterion — higher is better
+- The matrix number in step 7 is the primary selection criterion — higher is better. `inf` rows (zero drawdown ⇒ division by zero) are degenerate and should be ignored
+- On Windows consoles run with `$env:PYTHONIOENCODING="utf-8"` (scripts print `→` / `×`, which cp1252 can't encode)
+- The pipeline outputs currently on disk come from an experimental weekly run; re-run steps 1–7 to regenerate them for the daily data before relying on any backtest
 
 <!-- project finished(checking the contribution of github) -->
