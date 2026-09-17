@@ -31,12 +31,28 @@ def compute_score(df, threshold):
     return score
 
 
+def _manifest_sort_key(filename):
+    """Sort key: (direction, distance number), so Buy_distance_9.csv sorts
+    before Buy_distance_25.csv, which sorts before Buy_distance_111.csv."""
+    stem = filename[:-4] if filename.endswith(".csv") else filename
+    parts = stem.split("_distance_")
+    if len(parts) == 2:
+        try:
+            return (parts[0], int(parts[1]))
+        except ValueError:
+            pass
+    return (stem, 0)
+
+
 def write_manifest(files_by_threshold, manifest_path):
-    """Write a threshold,filename manifest (one row per file per threshold)."""
+    """Write a threshold,filename manifest (one row per file per threshold).
+
+    Rows are ordered by threshold ascending, then by direction and numeric
+    distance (natural order, not lexicographic)."""
     with open(manifest_path, "w") as f:
         f.write("threshold,filename\n")
-        for T, files in files_by_threshold.items():
-            for filename in files:
+        for T in sorted(files_by_threshold, key=float):
+            for filename in sorted(files_by_threshold[T], key=_manifest_sort_key):
                 f.write(f"{fmt_threshold(T)},{filename}\n")
 
 
