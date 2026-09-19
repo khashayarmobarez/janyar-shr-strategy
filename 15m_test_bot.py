@@ -1,7 +1,7 @@
 # 15m_test_bot.py
 # Backtest bot using 15M candle signals filtered by step3_filtered/823 distance buckets.
 # Risk: 0.002% | Fee: 0.0002% | R/R: 1:823 (win if rr >= 823)
-# Output: 15m_test_bot_results.csv + console summary
+# Output: 15m_test_bot_results.csv + console summary and history
 
 import math
 import os
