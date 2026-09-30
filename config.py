@@ -19,10 +19,15 @@ CANDLE_TIMEFRAME    = "1D"
 # directly; the 1M file is only needed by the 1h/15m live-sim bots.
 CANDLE_DATA_FILE    = "XAU_1d_data.csv"
 
-# Earliest 1M bar to keep. Bars before this timestamp are dropped during
-# extraction (step1) and in the live-sim test bots. Raw data begins 2004.06.11,
-# so "2004-01-01 00:00" keeps everything available.
-DATA_START          = "2004-01-01 00:00"
+# Earliest candle to keep for the DAILY path (step1_extract.py, 1d_test_bot.py).
+# Bars before this timestamp are dropped during extraction. Gold daily data
+# begins 2004.06.11; the daily pipeline intentionally starts later, at 2011.
+DATA_START          = "2011-01-03 04:00"
+
+# Earliest 1M bar to keep for the live-sim bots (1h_test_bot.py, 15m_test_bot.py).
+# Left at the raw 1M data start (2004.06.11) so the daily-path cutoff above does
+# not move them.
+DATA_START_1M       = "2004-01-01 00:00"
 
 RAW_DATA_FILE       = "XAU_1m_data.csv"
 RAW_TRADES_FILE     = "trades.csv"

@@ -9,7 +9,7 @@ import os
 import numpy as np
 import pandas as pd
 
-from config import FILTERED_FOLDER, RAW_DATA_FILE, DATA_START
+from config import FILTERED_FOLDER, RAW_DATA_FILE, DATA_START_1M
 from box_strategy import box_signal, find_breakout
 from thresholds import fmt_threshold
 
@@ -65,7 +65,7 @@ def load_minute_data(filepath):
         df[col] = pd.to_numeric(df[col], errors="coerce")
 
     df = df.dropna(subset=["open", "high", "low", "close"])
-    df = df[df.index >= DATA_START]
+    df = df[df.index >= DATA_START_1M]
     return df
 
 
