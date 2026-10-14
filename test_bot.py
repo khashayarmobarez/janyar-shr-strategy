@@ -12,7 +12,7 @@ from config import FILTERED_FOLDER
 from thresholds import fmt_threshold
 from step6_drawdown import get_trade_values, get_loss_event_indices, compute_lowest_drawdown
 
-# --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
+# --- Configurable parameters (tune after inspecting the step7 matrix) ---
 THRESHOLD = 4       # which step3_filtered/{THRESHOLD}/ folder to load (may be a decimal, e.g. 1.3)
 WIN_RR    = 4     # reward:risk; a win pays WIN_RR * risk_amount
 RISK_PCT  = 0.0333  # risk per trade as a fraction of current equity

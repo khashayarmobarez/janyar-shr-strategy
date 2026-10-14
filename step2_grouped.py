@@ -1,7 +1,8 @@
 import pandas as pd
 import math
 import os
-from config import GROUPED_FOLDER, RAW_TRADES_FILE
+import shutil
+from config import GROUPED_FOLDER, RAW_TRADES_FILE, DISTANCE_BUCKET_SIZE
 
 
 def main():
@@ -19,10 +20,15 @@ def main():
     df = pd.read_csv(RAW_TRADES_FILE)
     print(f"Loaded {len(df)} trades from {RAW_TRADES_FILE}")
 
-    # Compute integer distance bucket
-    df["distance_bucket"] = df["distance"].apply(math.floor)
+    # Compute integer distance bucket: floor(distance / DISTANCE_BUCKET_SIZE)
+    # (config.py; 0.0002 == 2 pips for EUR/USD).
+    df["distance_bucket"] = df["distance"].apply(
+        lambda d: math.floor(d / DISTANCE_BUCKET_SIZE)
+    )
 
-    # Ensure output folder exists
+    # Rebuild output folder so stale buckets from a previous dataset are dropped
+    if os.path.exists(GROUPED_FOLDER):
+        shutil.rmtree(GROUPED_FOLDER)
     os.makedirs(GROUPED_FOLDER, exist_ok=True)
 
     # Group by type and distance_bucket

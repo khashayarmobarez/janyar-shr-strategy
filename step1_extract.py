@@ -23,38 +23,10 @@ from config import (
     MIN_RR,
     CANDLE_DATA_FILE,
     RAW_TRADES_FILE,
-    DATA_START,
 )
 from box_strategy import box_signal, find_breakout_candle, simulate_trade_candles
+from data_loader import load_ohlcv_csv
 from thresholds import generate_thresholds
-
-
-# ---------------------------------------------------------------
-# DATA LOADING
-# ---------------------------------------------------------------
-
-
-def load_ohlcv_csv(filepath):
-    df = pd.read_csv(
-        filepath,
-        sep=";",
-        header=None,
-        names=["datetime", "open", "high", "low", "close", "volume"],
-        skiprows=1,
-        low_memory=False,
-    )
-    df["datetime"] = pd.to_datetime(df["datetime"], format="%Y.%m.%d %H:%M")
-    df = df.set_index("datetime").sort_index()
-
-    for col in ["open", "high", "low", "close", "volume"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    df = df.dropna(subset=["open", "high", "low", "close"])
-
-    # Remove all data before DATA_START (config.py)
-    df = df[df.index >= DATA_START]
-
-    return df
 
 
 # ---------------------------------------------------------------

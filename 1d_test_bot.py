@@ -11,8 +11,9 @@ import os
 import numpy as np
 import pandas as pd
 
-from config import FILTERED_FOLDER, CANDLE_DATA_FILE, DATA_START
+from config import FILTERED_FOLDER, CANDLE_DATA_FILE, DISTANCE_BUCKET_SIZE
 from box_strategy import box_signal, find_breakout_candle, simulate_trade_candles
+from data_loader import load_ohlcv_csv
 from thresholds import fmt_threshold
 
 THRESHOLD = 4
@@ -56,30 +57,6 @@ def load_valid_buckets(threshold=THRESHOLD):
 
 
 # ---------------------------------------------------------------
-# DATA LOADING
-# ---------------------------------------------------------------
-
-def load_ohlcv_csv(filepath):
-    df = pd.read_csv(
-        filepath,
-        sep=";",
-        header=None,
-        names=["datetime", "open", "high", "low", "close", "volume"],
-        skiprows=1,
-        low_memory=False,
-    )
-    df["datetime"] = pd.to_datetime(df["datetime"], format="%Y.%m.%d %H:%M")
-    df = df.set_index("datetime").sort_index()
-
-    for col in ["open", "high", "low", "close", "volume"]:
-        df[col] = pd.to_numeric(df[col], errors="coerce")
-
-    df = df.dropna(subset=["open", "high", "low", "close"])
-    df = df[df.index >= DATA_START]
-    return df
-
-
-# ---------------------------------------------------------------
 # TRADE GENERATION (same candle-level logic as step1_extract.py)
 # ---------------------------------------------------------------
 
@@ -117,7 +94,7 @@ def generate_trades(candles, valid_buckets):
         if distance == 0:
             continue
 
-        bucket = math.floor(distance)
+        bucket = math.floor(distance / DISTANCE_BUCKET_SIZE)
         if (direction, bucket) not in valid_buckets:
             continue
 

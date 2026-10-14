@@ -1,8 +1,11 @@
 # box_strategy.py
 #
 # Shared 3-candle "box breakout" detection logic, used by step1_extract.py
-# and the live-sim bots (15m_test_bot.py, 1h_test_bot.py) so the three never
-# drift apart.
+# and 1d_test_bot.py (candle granularity) so they never drift apart.
+#
+# find_breakout() is the 1-minute-granularity variant. It currently has no
+# caller: the 1H/15M live-sim bots were retired because the EUR/USD base data
+# ships no 1-minute feed.
 #
 # Concept (see strategy.md):
 #   - Three consecutive candles whose colors match one of three models form a

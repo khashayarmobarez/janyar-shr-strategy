@@ -4,6 +4,7 @@
 
 import pandas as pd
 import os
+import shutil
 from config import FILTERED_FOLDER, LISTS_FOLDER
 from thresholds import fmt_threshold
 
@@ -21,6 +22,9 @@ def main():
         print(f"ERROR: {FILTERED_FOLDER} not found. Run step3_filtered.py first.")
         return
 
+    # Rebuild output folder so stale lists from a previous dataset are dropped
+    if os.path.exists(LISTS_FOLDER):
+        shutil.rmtree(LISTS_FOLDER)
     os.makedirs(LISTS_FOLDER, exist_ok=True)
 
     # Each subdirectory in FILTERED_FOLDER is a threshold value

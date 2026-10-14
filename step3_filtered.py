@@ -1,6 +1,7 @@
 import pandas as pd
 import math
 import os
+import shutil
 from config import GROUPED_FOLDER, FILTERED_FOLDER, MIN_RR
 from thresholds import generate_thresholds, fmt_threshold
 
@@ -31,11 +32,24 @@ def compute_score(df, threshold):
 
 
 def write_manifest(files_by_threshold, manifest_path):
-    """Write a threshold,filename manifest (one row per file per threshold)."""
+    """Write a threshold,filename manifest (one row per file per threshold).
+
+    Rows are ordered by threshold ascending, then by direction and numeric
+    distance (natural order, not lexicographic)."""
+    def sort_key(filename):
+        stem = filename[:-4] if filename.endswith(".csv") else filename
+        parts = stem.split("_distance_")
+        if len(parts) == 2:
+            try:
+                return (parts[0], int(parts[1]))
+            except ValueError:
+                pass
+        return (stem, 0)
+
     with open(manifest_path, "w") as f:
         f.write("threshold,filename\n")
-        for T, files in files_by_threshold.items():
-            for filename in files:
+        for T in sorted(files_by_threshold, key=float):
+            for filename in sorted(files_by_threshold[T], key=sort_key):
                 f.write(f"{fmt_threshold(T)},{filename}\n")
 
 
@@ -64,7 +78,9 @@ def main():
 
     print(f"Thresholds: {thresholds}")
 
-    # Ensure filtered folder exists
+    # Rebuild output folder so stale thresholds from a previous dataset are dropped
+    if os.path.exists(FILTERED_FOLDER):
+        shutil.rmtree(FILTERED_FOLDER)
     os.makedirs(FILTERED_FOLDER, exist_ok=True)
 
     # Collect surviving and removed files per threshold
