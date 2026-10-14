@@ -29,7 +29,7 @@ After a valid box is formed, only the **immediately next candle** can trigger an
 | **Buy**   | Next candle's price reaches `box_top`       | `box_top`      | `box_bottom − SL_OFFSET`      |
 | **Sell**  | Next candle's price reaches `box_bottom`    | `box_bottom`   | `box_top + SL_OFFSET`         |
 
-`SL_OFFSET` is `0.00006` (0.6 pip) in `config.py`.
+`SL_OFFSET` is `0.00008` (0.8 pip) in `config.py`.
 
 **Candle granularity (pipeline + 1D test bot):** the breakout candle's own high/low decide. If it pierces both levels, its open breaks the tie — an open gapped beyond a level means that side triggered first; an open inside the box leaves the order unknown, so the signal is ambiguous and skipped.
 
@@ -77,7 +77,7 @@ If either condition is violated, the pattern is invalid.
 
 ## Distance Bucket
 
-Trades are grouped by `floor(|entry − stop_loss| / DISTANCE_BUCKET_SIZE)`, with `DISTANCE_BUCKET_SIZE = 0.0002` (2 pips) in `config.py`. This is only the grouping key; `reward_risk` is a ratio and is unaffected by the choice of unit.
+Trades are grouped by `floor(|entry − stop_loss| / DISTANCE_BUCKET_SIZE)`, with `DISTANCE_BUCKET_SIZE = 0.0004` (4 pips) in `config.py`. This is only the grouping key; `reward_risk` is a ratio and is unaffected by the choice of unit.
 
 ---
 

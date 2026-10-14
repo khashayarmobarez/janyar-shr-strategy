@@ -19,9 +19,9 @@ All shared constants live in `config.py` — change values there only:
 
 | Constant               | Default            | Description                                                                     |
 | ---------------------- | ------------------ | ------------------------------------------------------------------------------- |
-| `SL_OFFSET`            | 0.00006            | Offset past the box boundary for the stop loss (EUR/USD: 0.6 pip)               |
+| `SL_OFFSET`            | 0.00008            | Offset past the box boundary for the stop loss (EUR/USD: 0.8 pip)               |
 | `MIN_RR`               | 1.0                | Minimum reward/risk ratio for a trade to count as a win                         |
-| `DISTANCE_BUCKET_SIZE` | 0.0002             | Distance-bucket ruler: `bucket = floor(|entry − SL| / size)` (0.0002 = 2 pips)  |
+| `DISTANCE_BUCKET_SIZE` | 0.0004             | Distance-bucket ruler: `bucket = floor(|entry − SL| / size)` (0.0004 = 4 pips)  |
 | `NUM_WORKERS`          | 3                  | Legacy; step 1 now runs single-threaded on candle data                          |
 | `CANDLE_TIMEFRAME`     | `1D`               | Candle timeframe of the strategy                                                |
 | `CANDLE_DATA_FILE`     | `EURUSD1440.csv`   | Daily candle data the pipeline runs on (MT4-style export; format auto-detected) |
@@ -161,7 +161,7 @@ Detection logic lives in `box_strategy.py` (shared by `step1_extract.py` and `1d
   - **Buy**: price reaches `box_top` → entry = `box_top`, SL = `box_bottom − SL_OFFSET`
   - **Sell**: price reaches `box_bottom` → entry = `box_bottom`, SL = `box_top + SL_OFFSET`
   - Pipeline + `1d_test_bot.py` (candle granularity, `find_breakout_candle`): if the breakout candle pierces **both** levels, its open decides (open gapped beyond a level → that side triggered first); an open inside the box leaves the order unknown → skipped. If neither level is reached, no trade.
-- **Distance bucket**: `floor(|entry − stop_loss| / DISTANCE_BUCKET_SIZE)` — used to group and filter trades (0.0002 = 2 pips for EUR/USD)
+- **Distance bucket**: `floor(|entry − stop_loss| / DISTANCE_BUCKET_SIZE)` — used to group and filter trades (0.0004 = 4 pips for EUR/USD)
 - **Win condition**: price reaches `entry ± (WIN_RR × distance)` before hitting stop loss
 - Trade simulation scans candles (pipeline/1D bot: `simulate_trade_candles`) forward from the **breakout candle**; the favorable extreme of the SL-hit candle itself is excluded, since intra-candle order is unknown
 
@@ -170,7 +170,7 @@ Detection logic lives in `box_strategy.py` (shared by `step1_extract.py` and `1d
 - Bars before `DATA_START` (config.py, currently `2010-09-30 00:00`) are dropped
 - The test bot's `step3_filtered/{THRESHOLD}/` folder must be populated (steps 1–3) before running it
 - Step 1 runs single-threaded on the candle data; `NUM_WORKERS` is legacy and unused
-- Distance buckets use `DISTANCE_BUCKET_SIZE` (0.0002 = 2 pips); `reward_risk` is a scale-free ratio and is unaffected by the unit change
+- Distance buckets use `DISTANCE_BUCKET_SIZE` (0.0004 = 4 pips); `reward_risk` is a scale-free ratio and is unaffected by the unit change
 - The matrix number in step 7 is the primary selection criterion — higher is better
 
 <!-- project finished(checking the contribution of github) -->

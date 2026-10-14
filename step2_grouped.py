@@ -21,7 +21,7 @@ def main():
     print(f"Loaded {len(df)} trades from {RAW_TRADES_FILE}")
 
     # Compute integer distance bucket: floor(distance / DISTANCE_BUCKET_SIZE)
-    # (config.py; 0.0002 == 2 pips for EUR/USD).
+    # (config.py; 0.0004 == 4 pips for EUR/USD).
     df["distance_bucket"] = df["distance"].apply(
         lambda d: math.floor(d / DISTANCE_BUCKET_SIZE)
     )

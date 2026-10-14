@@ -3,14 +3,14 @@
 # Box-breakout model (see strategy.md / box_strategy.py):
 #   SL_OFFSET = distance past the opposite box boundary for the stop loss
 #               (Buy SL = box_bottom - SL_OFFSET, Sell SL = box_top + SL_OFFSET).
-#   EUR/USD scale: 0.00006 is 0.6 pip.
-SL_OFFSET       = 0.00006
+#   EUR/USD scale: 0.00008 is 0.8 pip.
+SL_OFFSET       = 0.00008
 MIN_RR          = 1.0
 
 # Ruler for distance-bucket grouping (step2_grouped.py, 1d_test_bot.py):
 #   bucket = floor(|entry - stop_loss| / DISTANCE_BUCKET_SIZE)
-#   0.0002 == 2 pips for EUR/USD. (Gold used 1.0 == 1 dollar.)
-DISTANCE_BUCKET_SIZE = 0.0002
+#   0.0004 == 4 pips for EUR/USD. (Gold used 1.0 == 1 dollar.)
+DISTANCE_BUCKET_SIZE = 0.0003
 
 
 PENALTY_PER_N_TRADES        = 10
