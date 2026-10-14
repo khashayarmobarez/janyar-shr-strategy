@@ -10,7 +10,7 @@ MIN_RR          = 1.0
 # Ruler for distance-bucket grouping (step2_grouped.py, 1d_test_bot.py):
 #   bucket = floor(|entry - stop_loss| / DISTANCE_BUCKET_SIZE)
 #   0.0004 == 4 pips for EUR/USD. (Gold used 1.0 == 1 dollar.)
-DISTANCE_BUCKET_SIZE = 0.0003
+DISTANCE_BUCKET_SIZE = 0.0002
 
 
 PENALTY_PER_N_TRADES        = 10
@@ -20,16 +20,17 @@ NUM_WORKERS                 = 3   # parallel CPU cores (legacy; step1 now runs s
 # df.resample(...) and pd.Timedelta(...).
 CANDLE_TIMEFRAME    = "1D"
 
-# Daily candle data the pipeline runs on. EURUSD1440.csv is an MT4-style daily
-# export: tab-separated, no header, "%Y-%m-%d %H:%M" timestamps, spanning
-# 2010-09-30 -> present. step1 and 1d_test_bot.py read this file directly via
-# data_loader.load_ohlcv_csv.
-CANDLE_DATA_FILE    = "EURUSD1440.csv"
+# Daily candle data the pipeline runs on. "EUR_USD Historical Data.csv" is an
+# Investing.com daily export: comma-separated with a quoted header
+# (Date, Price, Open, High, Low, Vol., Change %), "%m/%d/%Y" dates, newest-first,
+# and "Price" is the close. step1 and 1d_test_bot.py read this file directly via
+# data_loader.load_ohlcv_csv (which maps columns by name).
+CANDLE_DATA_FILE    = "EUR_USD Historical Data.csv"
 
 # Earliest bar to keep. Bars before this timestamp are dropped during
-# extraction (step1) and in the test bots. CANDLE_DATA_FILE begins 2010-09-30,
-# so "2010-09-30 00:00" keeps everything available.
-DATA_START          = "2010-09-30 00:00"
+# extraction (step1) and in the test bots. CANDLE_DATA_FILE begins 1996-01-02,
+# so "1996-01-02 00:00" keeps everything available.
+DATA_START          = "1996-01-02 00:00"
 
 RAW_TRADES_FILE     = "trades.csv"
 GROUPED_FOLDER      = "step2_grouped"
