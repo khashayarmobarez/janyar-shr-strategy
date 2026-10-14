@@ -15,8 +15,8 @@ from step6_drawdown import get_trade_values, get_loss_event_indices, compute_low
 # --- Configurable parameters (tune after inspecting the step7 4H matrix) ---
 THRESHOLD = 4       # which step3_filtered/{THRESHOLD}/ folder to load (may be a decimal, e.g. 1.3)
 WIN_RR    = 4     # reward:risk; a win pays WIN_RR * risk_amount
-RISK_PCT  = 0.0265  # risk per trade as a fraction of current equity
-FEE_PCT   = 0.00265 # fee per trade as a fraction of current equity
+RISK_PCT  = 0.0333  # risk per trade as a fraction of current equity
+FEE_PCT   = 0.00333 # fee per trade as a fraction of current equity
 TRADE_SIDE = "both"  # "buy" | "sell" | "both" — which side(s) to backtest
 
 
